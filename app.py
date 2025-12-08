@@ -46,9 +46,9 @@ LANGUAGES = {
         "verdict_good": "✅ Great time to use energy!",
         "verdict_bad": "❌ Expensive! Wait if possible.",
         "verdict_avg": "⚖️ Average Price.",
-        "zone_valle": "Valle (Off-Peak)",
-        "zone_llano": "Llano (Standard)",
-        "zone_punta": "Punta (Peak)",
+        "zone_valle": "Off-Peak",
+        "zone_llano": "Standard",
+        "zone_punta": "Peak",
         "data_unavailable": "⚠️ Data not available for",
         "raw_info": "Showing raw market data in €/MWh. Taxes and tariffs are hidden.",
         "hist_title": "Price Evolution (Last 30 Days)",
@@ -134,9 +134,9 @@ LANGUAGES = {
         "verdict_good": "✅ Bom momento!",
         "verdict_bad": "❌ Caro. Espere se puder.",
         "verdict_avg": "⚖️ Preço Médio.",
-        "zone_valle": "Vazio (Valle)",
-        "zone_llano": "Cheias (Llano)",
-        "zone_punta": "Ponta (Punta)",
+        "zone_valle": "Vazio",
+        "zone_llano": "Cheias",
+        "zone_punta": "Ponta",
         "data_unavailable": "⚠️ Dados não disponíveis para",
         "raw_info": "Mostrando dados brutos em €/MWh. Sem impostos ou taxas.",
         "hist_title": "Evolução de Preços (Últimos 30 Dias)",
@@ -390,3 +390,4 @@ with tab2:
         hc3.metric("Max (Day)", fmt_hist % h_max)
     else:
         st.warning("History data not available.")
+        
