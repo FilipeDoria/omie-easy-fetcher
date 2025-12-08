@@ -92,7 +92,6 @@ if df is not None and not df.empty:
     st.plotly_chart(fig, use_container_width=True)
 
     # --- Data Table ---
-    # We keep the styling you liked (requires matplotlib in requirements.txt)
     with st.expander("View Data Table"):
         # Format the display dataframe
         display_df = df[['Hour_Display', 'Price']].set_index('Hour_Display')
@@ -100,26 +99,4 @@ if df is not None and not df.empty:
 
 else:
     st.warning(f"⚠️ Data not available for {day_select}.")
-    m2.metric("Lowest Price", f"{min_price:.2f} €", f"at {best_hour}", delta_color="inverse") # Green is good (low price)
-    m3.metric("Highest Price", f"{max_price:.2f} €", f"at {worst_hour}", delta_color="normal") # Red is bad (high price)
-
-    # --- Interactive Chart ---
-    st.markdown("---")
-    
-    # Create beautiful Plotly chart
-    fig = px.line(df, x="Hour", y="Price", title=f"Electricity Price - {day_select} ({country_choice})", markers=True)
-    
-    # Color regions: Green (Low), Red (High)
-    fig.add_hrect(y0=0, y1=min_price + (avg_price - min_price)/3, line_width=0, fillcolor="green", opacity=0.1)
-    fig.add_hrect(y0=max_price - (max_price - avg_price)/3, y1=max_price * 1.1, line_width=0, fillcolor="red", opacity=0.1)
-
-    fig.update_layout(yaxis_title="Price (€/MWh)", xaxis_title="Hour", hovermode="x unified")
-    st.plotly_chart(fig, use_container_width=True)
-
-    # --- Raw Data ---
-    with st.expander("View Data Table"):
-        st.dataframe(df[['Hour', 'Price']].style.background_gradient(cmap="RdYlGn_r", subset=['Price']))
-
-else:
-    st.warning(f"⚠️ Data not available for {day_select}. Prices for tomorrow are usually released after 13:30 CET.")
     
