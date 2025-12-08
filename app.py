@@ -449,4 +449,3 @@ with tab2:
         hc3.metric("Max (Day)", fmt_hist.format(h_max))
     else:
         st.warning("History data not available.")
-        
