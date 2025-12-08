@@ -4,16 +4,36 @@ import requests
 from datetime import date, timedelta, datetime
 import plotly.express as px
 import pytz
+import os
 
-# --- Configuration ---
-st.set_page_config(page_title="Iberian Energy Prices", page_icon="⚡", layout="wide")
+# --- Configuration & Branding ---
+st.set_page_config(
+    page_title="Iberian Energy Prices",
+    page_icon="⚡", # You can replace "⚡" with the path to an image: "assets/icon.png"
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://www.omie.es/',
+        'Report a bug': "https://github.com/",
+        'About': """
+        ### ⚡ Iberian Energy Prices
+        **Track real-time electricity prices in Spain & Portugal.**
+        
+        This app uses the OMIE market data via Energy-Charts API to help you decide the best time to consume energy.
+        
+        *Version 2.0 - Multi-tariff & Fixed Rate Comparison*
+        """
+    }
+)
+
+# --- LOGO SETUP ---
+# If you have a logo file, place it in an 'assets' folder and uncomment the next line:
+# st.logo("assets/logo.png", link="https://your-app-url.streamlit.app")
 
 # --- 🔗 URL PARAMETER HANDLING ---
-# We fetch params at the start to set default values for widgets
 qp = st.query_params
 
 def get_param(key, default_val, type_func):
-    """Helper to safely get and cast URL params"""
     try:
         if key in qp:
             return type_func(qp[key])
@@ -21,8 +41,8 @@ def get_param(key, default_val, type_func):
     except:
         return default_val
 
-# Defaults (User requested: Portuguese, 23% VAT, 0.025 Fee)
-default_lang_idx = get_param("lang_idx", 2, int) # 2 = Portuguese
+# Defaults
+default_lang_idx = get_param("lang_idx", 2, int)
 default_vat = get_param("vat", 23.0, float)
 default_fee = get_param("fee", 0.025, float)
 default_show_fixed = get_param("show_fixed", False, lambda x: x.lower() == 'true')
@@ -177,21 +197,16 @@ def get_tariff_period(hour, is_weekend, texts):
 
 # --- Sidebar: Settings ---
 with st.sidebar:
-    # Language Selector (Updates URL)
     lang_options = ["English", "Español", "Português"]
-    # Ensure index is within bounds
     safe_idx = default_lang_idx if 0 <= default_lang_idx < 3 else 2
     lang_choice = st.selectbox("Language / Idioma", lang_options, index=safe_idx)
     t = LANGUAGES[lang_choice]
-    
-    # Update param immediately
     st.query_params["lang_idx"] = lang_options.index(lang_choice)
     
     st.header(t["settings"])
     show_raw = st.toggle(t["show_raw"], value=False)
     
     if not show_raw:
-        # --- FIXED PRICE COMPARISON TOGGLE ---
         show_fixed = st.toggle(t["comp_toggle"], value=default_show_fixed)
         st.query_params["show_fixed"] = str(show_fixed)
         
@@ -202,18 +217,14 @@ with st.sidebar:
         
         st.divider()
         st.subheader(t["taxes"])
-        
-        # VAT Input
         tax_input = st.number_input(t["vat"], value=default_vat, step=1.0)
         st.query_params["vat"] = tax_input
         tax_value = tax_input / 100
         
-        # Fee Input
         fee_input = st.number_input(t["fees"], value=default_fee, step=0.001, format="%.3f")
         st.query_params["fee"] = fee_input
         access_fee = fee_input
         
-        # Calculate final Fixed Price (with tax) for comparison logic
         if show_fixed:
             fixed_price_final = fixed_val_input * (1 + tax_value)
             
@@ -277,7 +288,6 @@ def get_historical_prices(end_date, country_code, days=30):
 # --- MAIN APP ---
 st.title(t["title"])
 
-# Date Blocker
 now_cet = datetime.now(pytz.timezone('Europe/Madrid'))
 if now_cet.hour > 13 or (now_cet.hour == 13 and now_cet.minute >= 30):
     max_allowed = now_cet.date() + timedelta(days=1)
@@ -299,7 +309,6 @@ with tab1:
     df, current_tz = get_daily_prices(day_select, country_choice)
 
     if df is not None and not df.empty:
-        # Calc Engine
         if show_raw:
             df['Display_Price'] = df['Raw_Price_MWh']
             unit_label, chart_colors = "€/MWh", "RdYlGn_r"
@@ -309,31 +318,24 @@ with tab1:
             unit_label = "€/kWh"
             fmt_str = "{:.3f} €"
             title_label = "PVPC"
-            # PVPC Calculation: (MWh/1000 + Fees) * Tax
             df['Display_Price'] = (df['Raw_Price_MWh'] / 1000 + access_fee) * (1 + tax_value)
             chart_colors = "RdYlGn_r"
 
-        # --- LIVE STATUS & VERDICT ---
         if day_select == date.today():
             now_local = datetime.now(pytz.timezone(current_tz))
             curr_row = df.loc[df['Hour_Int'] == now_local.hour]
             if not curr_row.empty:
                 cp = curr_row['Display_Price'].values[0]
                 avg = df['Display_Price'].mean()
-                
-                # Verdict Logic: If Comparing, beat Fixed. Else, beat Average.
                 if not show_raw and show_fixed:
-                    # Compare vs Fixed Line
                     if cp < fixed_price_final:
                         v_txt, v_col = t["verdict_fixed_win"], "green"
-                        # Calc saving
                         delta_val = cp - fixed_price_final
                     else:
                         v_txt, v_col = t["verdict_fixed_loss"], "red"
                         delta_val = cp - fixed_price_final
                     delta_text = f"{delta_val:.3f} vs Fixed"
                 else:
-                    # Compare vs Daily Average
                     if cp < avg * 0.9: v_txt, v_col = t["verdict_good"], "green"
                     elif cp > avg * 1.1: v_txt, v_col = t["verdict_bad"], "red"
                     else: v_txt, v_col = t["verdict_avg"], "orange"
@@ -345,7 +347,6 @@ with tab1:
                 c2.markdown(f"#### :{v_col}[{v_txt}]")
                 st.divider()
 
-        # Metrics
         avg_price = df['Display_Price'].mean()
         min_price = df['Display_Price'].min()
         max_price = df['Display_Price'].max()
@@ -357,7 +358,6 @@ with tab1:
         m2.metric(t["min_price"], fmt_str.format(min_price), f"at {best_h}", delta_color="inverse")
         m3.metric(t["max_price"], fmt_str.format(max_price), delta_color="normal")
 
-        # --- CHART SECTION ---
         st.markdown("---")
         fig = px.bar(
             df, 
@@ -369,9 +369,7 @@ with tab1:
             labels={"Display_Price": f"{t['price_axis']} ({unit_label})", "Hour_Display": t['hour_axis']}
         )
         
-        # --- FIXED PRICE OVERLAY (New Feature) ---
         if not show_raw and show_fixed:
-            # Add horizontal line for Fixed Price
             fig.add_hline(
                 y=fixed_price_final, 
                 line_dash="dash", 
@@ -381,7 +379,6 @@ with tab1:
                 annotation_position="top left"
             )
 
-        # Tooltips & Styling
         fig.update_traces(hovertemplate=f"{t['hour_axis']}: %{{x}}<br>{t['price_axis']}: %{{y:.3f}} {unit_label}")
 
         if not show_raw:
@@ -390,7 +387,6 @@ with tab1:
                 p_name, bg_col = get_tariff_period(i, is_weekend, t)
                 fig.add_shape(type="rect", x0=i-0.5, x1=i+0.5, y0=0, y1=1, xref="x", yref="paper", fillcolor=bg_col, line_width=0, layer="below")
             
-            # Legend
             if not is_weekend:
                 fig.add_annotation(x=3, y=1.07, text=f"🟦 {t['zone_valle']}", showarrow=False, xref="x", yref="paper", font=dict(color="blue", size=10))
                 fig.add_annotation(x=10, y=1.07, text=f"🟨 {t['zone_llano']}", showarrow=False, xref="x", yref="paper", font=dict(color="#b5b500", size=10))
@@ -405,7 +401,6 @@ with tab1:
         fig.update_layout(xaxis=dict(fixedrange=True, title=None), yaxis=dict(fixedrange=True, title=None), coloraxis_showscale=False, hovermode="x unified", margin=dict(l=10, r=10, t=50, b=10))
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-        # Calculator
         if show_calculator and not show_raw:
             st.markdown(f"### {t['calc_title']}")
             c1, c2, c3 = st.columns(3)
@@ -454,4 +449,4 @@ with tab2:
         hc3.metric("Max (Day)", fmt_hist.format(h_max))
     else:
         st.warning("History data not available.")
-                                                     
+        
