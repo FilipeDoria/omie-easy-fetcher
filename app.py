@@ -242,4 +242,4 @@ if df is not None and not df.empty:
 
 else:
     st.warning(f"⚠️ Data not available for {day_select}.")
-    
+                          
