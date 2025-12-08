@@ -52,10 +52,7 @@ LANGUAGES = {
         "data_unavailable": "⚠️ Data not available for",
         "raw_info": "Showing raw market data in €/MWh. Taxes and tariffs are hidden.",
         "hist_title": "Price Evolution (Last 30 Days)",
-        "hist_avg_note": "Showing daily average prices.",
-        "theme_label": "App Theme",
-        "theme_light": "☀️ Light",
-        "theme_dark": "🌑 Dark"
+        "hist_avg_note": "Showing daily average prices."
     },
     "Español": {
         "title": "⚡ Precio de la Luz (OMIE)",
@@ -99,10 +96,7 @@ LANGUAGES = {
         "data_unavailable": "⚠️ Datos no disponibles para",
         "raw_info": "Mostrando datos crudos en €/MWh. Sin impuestos ni peajes.",
         "hist_title": "Evolución de Precios (Últimos 30 Días)",
-        "hist_avg_note": "Mostrando precios medios diarios.",
-        "theme_label": "Tema de la App",
-        "theme_light": "☀️ Claro",
-        "theme_dark": "🌑 Oscuro"
+        "hist_avg_note": "Mostrando precios medios diarios."
     },
     "Português": {
         "title": "⚡ Preço da Eletricidade (OMIE)",
@@ -146,10 +140,7 @@ LANGUAGES = {
         "data_unavailable": "⚠️ Dados não disponíveis para",
         "raw_info": "Mostrando dados brutos em €/MWh. Sem impostos ou taxas.",
         "hist_title": "Evolução de Preços (Últimos 30 Dias)",
-        "hist_avg_note": "Mostrando preços médios diários.",
-        "theme_label": "Tema",
-        "theme_light": "☀️ Claro",
-        "theme_dark": "🌑 Escuro"
+        "hist_avg_note": "Mostrando preços médios diários."
     }
 }
 
@@ -170,13 +161,6 @@ with st.sidebar:
     t = LANGUAGES[lang_choice]
     
     st.header(t["settings"])
-
-    # --- 🎨 THEME SELECTOR ---
-    theme_mode = st.radio(t["theme_label"], [t["theme_light"], t["theme_dark"]], index=0)
-    is_dark_mode = theme_mode == t["theme_dark"]
-
-    st.divider()
-
     show_raw = st.toggle(t["show_raw"], value=False)
     
     if not show_raw:
@@ -197,41 +181,6 @@ with st.sidebar:
     show_calculator = st.checkbox(t["calc_title"], value=False)
     st.markdown("---")
     st.caption("Created with **Streamlit** & **Energy-Charts API**")
-
-# --- CSS INJECTION FOR THEME ---
-if is_dark_mode:
-    # Dark Mode CSS
-    st.markdown("""
-    <style>
-        .stApp {
-            background-color: #0E1117;
-            color: #FAFAFA;
-        }
-        [data-testid="stSidebar"] {
-            background-color: #262730;
-            color: #FAFAFA;
-        }
-        .stMetricLabel {color: #FAFAFA !important;}
-        div[data-testid="stExpander"] details {color: #FAFAFA;}
-    </style>
-    """, unsafe_allow_html=True)
-    plotly_template = "plotly_dark"
-else:
-    # Light Mode CSS (Default)
-    st.markdown("""
-    <style>
-        .stApp {
-            background-color: #FFFFFF;
-            color: #000000;
-        }
-        [data-testid="stSidebar"] {
-            background-color: #F0F2F6;
-            color: #000000;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    plotly_template = "plotly_white"
-
 
 # --- DATA FUNCTIONS ---
 @st.cache_data(ttl=3600)
@@ -287,9 +236,7 @@ def get_historical_prices(end_date, country_code, days=30):
 st.title(t["title"])
 
 # --- DATE BLOCKER FIX ---
-# Logic: If it is past 13:30 CET, allow Tomorrow.
-# Previous Bug: (hour >= 13 and min >= 30) failed for 14:00, 15:00 etc.
-# Fixed Logic: (hour > 13) OR (hour == 13 AND min >= 30)
+# Correct Logic: If hour > 13 OR (hour is 13 AND minute >= 30), allow tomorrow.
 now_cet = datetime.now(pytz.timezone('Europe/Madrid'))
 if now_cet.hour > 13 or (now_cet.hour == 13 and now_cet.minute >= 30):
     max_allowed = now_cet.date() + timedelta(days=1)
@@ -386,19 +333,9 @@ with tab1:
         
         if day_select == date.today():
             now_str = datetime.now(pytz.timezone(current_tz)).strftime('%H:00')
-            # Adjust 'NOW' line color based on theme
-            line_color = "white" if is_dark_mode else "black"
-            fig.add_vline(x=now_str, line_width=2, line_dash="dash", line_color=line_color)
+            fig.add_vline(x=now_str, line_width=2, line_dash="dash", line_color="black")
 
-        # Smart Layout (Updates based on Theme Selection)
-        fig.update_layout(
-            template=plotly_template,
-            xaxis=dict(fixedrange=True, title=None), 
-            yaxis=dict(fixedrange=True, title=None), 
-            coloraxis_showscale=False, 
-            hovermode="x unified", 
-            margin=dict(l=10, r=10, t=50, b=10)
-        )
+        fig.update_layout(xaxis=dict(fixedrange=True, title=None), yaxis=dict(fixedrange=True, title=None), coloraxis_showscale=False, hovermode="x unified", margin=dict(l=10, r=10, t=50, b=10))
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
         # Calculator
@@ -443,12 +380,7 @@ with tab2:
         # Line Chart
         fig_h = px.line(hist_df, x="Date", y="Display_Price", markers=True, title=f"Average {h_unit}", labels={"Display_Price": t['price_axis'], "Date": t['date_axis']})
         fig_h.update_traces(hovertemplate=f"{t['date_axis']}: %{{x}}<br>{t['price_axis']}: %{{y:.3f}} {h_unit}")
-        fig_h.update_layout(
-            template=plotly_template,
-            xaxis=dict(fixedrange=True), 
-            yaxis=dict(fixedrange=True), 
-            hovermode="x unified"
-        )
+        fig_h.update_layout(xaxis=dict(fixedrange=True), yaxis=dict(fixedrange=True), hovermode="x unified")
         st.plotly_chart(fig_h, use_container_width=True, config={'displayModeBar': False})
         
         # Stats
@@ -462,4 +394,3 @@ with tab2:
         hc3.metric("Max (Day)", fmt_hist % h_max)
     else:
         st.warning("History data not available.")
-        
