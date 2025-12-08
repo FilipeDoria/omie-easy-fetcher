@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
-from datetime import date
+from datetime import date, datetime
 import plotly.express as px
 
 # --- Configuration ---
@@ -23,11 +23,10 @@ with st.sidebar:
     st.header("⚙️ Settings")
     
     # 1. SPECIAL OVERRIDE: Show Raw Price
-    # This comes first as it overrides other settings
     show_raw = st.toggle("Show Raw OMIE Price (No Taxes)", value=False)
     
     if not show_raw:
-        # 2. Tariff Selection (Only show if NOT in Raw Mode)
+        # 2. Tariff Selection
         tariff_type = st.radio("Select Tariff Type:", ["Market Price (PVPC)", "Fixed Rate"], index=0)
         
         if tariff_type == "Fixed Rate":
@@ -77,6 +76,8 @@ def get_electricity_prices(selected_date, country_code):
         # Resample to Hourly
         df = df.set_index('Timestamp').resample('1h').mean().reset_index()
         df['Hour_Display'] = df['Timestamp'].dt.strftime('%H:00')
+        # We need an integer hour for logic comparisons
+        df['Hour_Int'] = df['Timestamp'].dt.hour
         return df
 
     except Exception as e:
@@ -97,26 +98,56 @@ df = get_electricity_prices(day_select, country_choice)
 if df is not None and not df.empty:
     
     # --- CALCULATION ENGINE ---
-    # Logic: If 'Show Raw' is ON, we ignore everything else and show MWh
     if show_raw:
         df['Display_Price'] = df['Raw_Price_MWh']
         price_label = "Raw Market Price"
         unit_label = "€/MWh"
         fmt = "%.2f €"
-        chart_colors = "RdYlGn_r" # Green-Red for market
+        chart_colors = "RdYlGn_r"
     else:
-        # Normal Mode (Taxes + Tariff)
         unit_label = "€/kWh"
         fmt = "%.3f €"
-        
         if tariff_type == "Fixed Rate":
             df['Display_Price'] = fixed_price * (1 + tax_value)
             price_label = "Fixed Rate (incl. Tax)"
-            chart_colors = ["#2E86C1", "#2E86C1"] # Solid Blue
+            chart_colors = ["#2E86C1", "#2E86C1"]
         else:
             df['Display_Price'] = (df['Raw_Price_MWh'] / 1000 + access_fee) * (1 + tax_value)
             price_label = "PVPC Price (incl. Tax)"
             chart_colors = "RdYlGn_r"
+
+    # --- 🟢 LIVE STATUS SECTION (New!) ---
+    # Only show this if the user is looking at TODAY's data
+    if day_select == date.today():
+        # Get current time in Madrid/Paris timezone
+        now_madrid = pd.Timestamp.now(tz='Europe/Madrid')
+        current_hour_int = now_madrid.hour
+        
+        # Find the row for the current hour
+        current_row = df.loc[df['Hour_Int'] == current_hour_int]
+        
+        if not current_row.empty:
+            curr_price = current_row['Display_Price'].values[0]
+            avg_price_today = df['Display_Price'].mean()
+            
+            # Simple Logic for "Verdict"
+            if curr_price < avg_price_today * 0.9:
+                verdict = "✅ Great time to use energy!"
+                verdict_color = "green"
+            elif curr_price > avg_price_today * 1.1:
+                verdict = "❌ Expensive! Wait if possible."
+                verdict_color = "red"
+            else:
+                verdict = "⚖️ Average Price."
+                verdict_color = "orange"
+
+            st.markdown(f"### ⏱️ Right Now ({now_madrid.strftime('%H:%M')})")
+            c1, c2 = st.columns([1, 2])
+            with c1:
+                st.metric("Current Price", fmt % curr_price, delta=f"{curr_price - avg_price_today:.3f} vs Avg", delta_color="inverse")
+            with c2:
+                st.markdown(f"#### :{verdict_color}[{verdict}]")
+            st.divider()
 
     # --- Metrics ---
     avg_price = df['Display_Price'].mean()
@@ -127,13 +158,10 @@ if df is not None and not df.empty:
     st.markdown(f"### 📊 Daily Summary ({unit_label})")
     m1, m2, m3 = st.columns(3)
     m1.metric("Average Price", fmt % avg_price)
-    
-    # Logic for metrics display
     if show_raw or (not show_raw and tariff_type == "Market Price (PVPC)"):
         m2.metric("Lowest Price", fmt % min_price, f"at {best_hour}", delta_color="inverse")
         m3.metric("Highest Price", fmt % max_price, delta_color="normal")
     else:
-        # Fixed Rate Metrics
         m2.metric("Your Rate", fmt % df['Display_Price'].iloc[0])
         m3.metric("Tax Applied", f"{int(tax_value*100)}%")
 
@@ -149,72 +177,69 @@ if df is not None and not df.empty:
     )
     
     # --- ADD BACKGROUND ZONES ---
-    # Only show background zones if we are NOT in Raw Mode (usually raw traders don't care about consumer zones)
-    # But user asked for Raw Mode "without extras", so we hide zones in Raw Mode to be clean.
     if not show_raw:
         is_weekend = day_select.weekday() >= 5
         for i in range(24):
             period_name, bg_color = get_tariff_period(i, is_weekend)
-            fig.add_shape(
-                type="rect",
-                x0=i-0.5, x1=i+0.5,
-                y0=0, y1=1, xref="x", yref="paper",
-                fillcolor=bg_color,
-                line_width=0,
-                layer="below"
-            )
-        # Legend
+            fig.add_shape(type="rect", x0=i-0.5, x1=i+0.5, y0=0, y1=1, xref="x", yref="paper", fillcolor=bg_color, line_width=0, layer="below")
         if not is_weekend:
             fig.add_annotation(x=4, y=1.05, text="🟦 Valle", showarrow=False, xref="x", yref="paper", font=dict(color="blue"))
             fig.add_annotation(x=9, y=1.05, text="🟨 Llano", showarrow=False, xref="x", yref="paper", font=dict(color="#b5b500"))
             fig.add_annotation(x=12, y=1.05, text="🟥 Punta", showarrow=False, xref="x", yref="paper", font=dict(color="red"))
 
-    # --- LOCK ZOOM (The Fix) ---
+    # --- 📍 ADD "NOW" LINE (New!) ---
+    # Only if viewing today's chart
+    if day_select == date.today():
+        now_hour_str = pd.Timestamp.now(tz='Europe/Madrid').strftime('%H:00')
+        # We add a vertical line. Since X-axis is categorical strings "00:00", we match that string.
+        fig.add_vline(x=now_hour_str, line_width=3, line_dash="dash", line_color="black")
+        fig.add_annotation(x=now_hour_str, y=1.1, text="NOW", showarrow=False, xref="x", yref="paper", font=dict(color="black", size=12, weight="bold"))
+
     fig.update_layout(
-        xaxis=dict(fixedrange=True, title=None), # Lock X zoom
-        yaxis=dict(fixedrange=True, title=f"Price ({unit_label})"), # Lock Y zoom
+        xaxis=dict(fixedrange=True, title=None),
+        yaxis=dict(fixedrange=True, title=f"Price ({unit_label})"),
         coloraxis_showscale=False,
         hovermode="x unified",
-        margin=dict(l=20, r=20, t=40, b=20)
+        margin=dict(l=20, r=20, t=50, b=20) # Added top margin for "NOW" label
     )
     
-    # Hide the "Camera" modebar buttons to prevent confusion
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
     # --- OPTIONAL CALCULATOR ---
     if show_calculator and not show_raw:
         st.markdown("### ⏱️ Plan Your Usage")
         st.info(f"Calculating based on: **{price_label}**")
-        
         c1, c2, c3 = st.columns(3)
         with c1:
             appliance_power = st.number_input("Power (Watts)", value=2000, step=100)
         with c2:
             duration_hours = st.number_input("Duration (Hours)", value=2, min_value=1, max_value=12)
         
-        # Logic
         df['Rolling_Avg'] = df['Display_Price'].rolling(window=duration_hours).mean().shift(1 - duration_hours)
-        
         if not df['Rolling_Avg'].dropna().empty:
             best_window_price = df['Rolling_Avg'].min()
             best_start_idx = df['Rolling_Avg'].idxmin()
             best_start_time = df.loc[best_start_idx, 'Hour_Display']
-            
-            # Cost Calc (Always convert Watts to kW)
             total_trip_cost = (appliance_power / 1000) * duration_hours * best_window_price
-            
             with c3:
                 if tariff_type == "Market Price (PVPC)":
                     st.success(f"**Best Start:** {best_start_time}")
                 else:
-                    st.info("**Start Anytime** (Fixed Rate)")
-                
+                    st.info("**Start Anytime**")
                 st.metric("Estimated Cost", fmt % total_trip_cost)
     
-    # --- Data Table ---
+    # --- Data Table & Download ---
     with st.expander("View Detailed Data Table"):
+        # Add Download Button
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Data as CSV",
+            data=csv,
+            file_name=f"electricity_prices_{day_select}.csv",
+            mime="text/csv",
+        )
         st.dataframe(df[['Hour_Display', 'Display_Price']].style.format({"Display_Price": "{:.4f}"}), use_container_width=True)
 
 else:
     st.warning(f"⚠️ Data not available for {day_select}.")
-            
+    
