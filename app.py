@@ -27,8 +27,12 @@ def get_electricity_prices(selected_date, country_code):
             'Price': data['price']
         })
         
-        # Create a clean integer hour for sorting and a string for display
-        df['Hour_Int'] = df['Timestamp'].dt.hour
+        # --- CRITICAL FIX: Handle 15-minute resolution ---
+        # The API returns 4 values per hour. We average them to get 1 hourly price.
+        # This fixes the "400 EUR" Y-axis bug and the "KeyError" crash.
+        df = df.set_index('Timestamp').resample('1h').mean().reset_index()
+
+        # Create display columns
         df['Hour_Display'] = df['Timestamp'].dt.strftime('%H:00')
         return df
 
@@ -66,26 +70,24 @@ if df is not None and not df.empty:
     m2.metric("Lowest Price", f"{min_price:.2f} €", f"at {best_hour_row['Hour_Display']}", delta_color="inverse")
     m3.metric("Highest Price", f"{max_price:.2f} €", f"at {worst_hour_row['Hour_Display']}", delta_color="normal")
 
-    # --- IMPROVED CHART SECTION ---
+    # --- Chart Section ---
     st.markdown("---")
     
-    # We use a Bar Chart with conditional coloring
-    # 'RdYlGn_r' reverses the scale so Low Price = Green, High Price = Red
+    # Bar Chart: Simple and Clear
     fig = px.bar(
         df, 
         x="Hour_Display", 
         y="Price",
         color="Price",
-        color_continuous_scale="RdYlGn_r",
+        color_continuous_scale="RdYlGn_r", # Red-Yellow-Green (reversed)
         title=f"Hourly Prices - {day_select}",
         labels={"Price": "Price (€/MWh)", "Hour_Display": "Hour"}
     )
     
-    # Clean up the layout
     fig.update_layout(
         xaxis_title=None,
         yaxis_title="Price (€/MWh)",
-        coloraxis_showscale=False, # Hide the side color bar to save space
+        coloraxis_showscale=False,
         hovermode="x unified"
     )
     
@@ -93,9 +95,15 @@ if df is not None and not df.empty:
 
     # --- Data Table ---
     with st.expander("View Data Table"):
-        # Format the display dataframe
+        # We format the timestamp to be the index so the table looks clean
         display_df = df[['Hour_Display', 'Price']].set_index('Hour_Display')
-        st.dataframe(display_df.style.background_gradient(cmap="RdYlGn_r", subset=['Price']), use_container_width=True)
+        
+        # This styling caused the crash before, but now that we 'resampled',
+        # there are no duplicate hours, so it will work perfectly.
+        st.dataframe(
+            display_df.style.background_gradient(cmap="RdYlGn_r", subset=['Price']), 
+            use_container_width=True
+        )
 
 else:
     st.warning(f"⚠️ Data not available for {day_select}.")
