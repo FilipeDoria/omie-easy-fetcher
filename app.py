@@ -157,7 +157,8 @@ def get_tariff_period(hour, is_weekend, texts):
 
 # --- Sidebar: Settings ---
 with st.sidebar:
-    lang_choice = st.selectbox("Language / Idioma", ["English", "Español", "Português"])
+    # UPDATED DEFAULT: Index 2 is "Português"
+    lang_choice = st.selectbox("Language / Idioma", ["English", "Español", "Português"], index=2)
     t = LANGUAGES[lang_choice]
     
     st.header(t["settings"])
@@ -169,9 +170,11 @@ with st.sidebar:
             fixed_price = st.number_input(t["fixed_price_label"], value=0.060, step=0.001, format="%.3f")
         st.divider()
         st.subheader(t["taxes"])
-        tax_value = st.number_input(t["vat"], value=21.0, step=1.0) / 100
+        # UPDATED DEFAULT: 23% VAT
+        tax_value = st.number_input(t["vat"], value=23.0, step=1.0) / 100
         if tariff_type == t["tariff_pvpc"]:
-            access_fee = st.number_input(t["fees"], value=0.040, step=0.001, format="%.3f")
+            # UPDATED DEFAULT: 0.025 Grid Fee
+            access_fee = st.number_input(t["fees"], value=0.025, step=0.001, format="%.3f")
         else:
             access_fee = 0.0
     else:
@@ -236,7 +239,7 @@ def get_historical_prices(end_date, country_code, days=30):
 st.title(t["title"])
 
 # --- DATE BLOCKER FIX ---
-# Correct Logic: If hour > 13 OR (hour is 13 AND minute >= 30), allow tomorrow.
+# Logic: If hour > 13 OR (hour is 13 AND minute >= 30), allow tomorrow.
 now_cet = datetime.now(pytz.timezone('Europe/Madrid'))
 if now_cet.hour > 13 or (now_cet.hour == 13 and now_cet.minute >= 30):
     max_allowed = now_cet.date() + timedelta(days=1)
@@ -247,7 +250,9 @@ col1, col2 = st.columns(2)
 with col1:
     day_select = st.date_input(t["select_date"], date.today(), max_value=max_allowed)
 with col2:
-    country_choice = st.radio(t["country"], ["Spain (ES)", "Portugal (PT)"], horizontal=True)
+    # Set default country to Portugal if Language is Portuguese
+    default_country_idx = 1 if lang_choice == "Português" else 0
+    country_choice = st.radio(t["country"], ["Spain (ES)", "Portugal (PT)"], index=default_country_idx, horizontal=True)
 
 # --- TABS LAYOUT ---
 tab1, tab2 = st.tabs([t["tab_daily"], t["tab_history"]])
@@ -260,9 +265,11 @@ with tab1:
         # Calc Engine
         if show_raw:
             df['Display_Price'] = df['Raw_Price_MWh']
-            price_label, unit_label, fmt, chart_colors = "MWh", "€/MWh", "%.3f €", "RdYlGn_r"
+            price_label, unit_label, chart_colors = "MWh", "€/MWh", "RdYlGn_r"
+            fmt_str = "{:.3f} €" # FIXED: Use python format syntax instead of C-style
         else:
-            unit_label, fmt = "€/kWh", "%.3f €"
+            unit_label = "€/kWh"
+            fmt_str = "{:.3f} €" # FIXED
             if tariff_type == t["tariff_fixed"]:
                 df['Display_Price'] = fixed_price * (1 + tax_value)
                 price_label, chart_colors = t["tariff_fixed"], ["#2E86C1", "#2E86C1"]
@@ -282,7 +289,7 @@ with tab1:
                 else: v_txt, v_col = t["verdict_avg"], "orange"
                 st.markdown(f"### {t['now_label']} ({now_local.strftime('%H:%M')})")
                 c1, c2 = st.columns([1, 2])
-                c1.metric(t['price_axis'], fmt % cp, delta=f"{cp - avg:.3f}", delta_color="inverse")
+                c1.metric(t['price_axis'], fmt_str.format(cp), delta=f"{cp - avg:.3f}", delta_color="inverse")
                 c2.markdown(f"#### :{v_col}[{v_txt}]")
                 st.divider()
 
@@ -294,12 +301,12 @@ with tab1:
 
         st.markdown(f"### 📊 {t['daily_summary']} ({unit_label})")
         m1, m2, m3 = st.columns(3)
-        m1.metric(t["avg_price"], fmt % avg_price)
+        m1.metric(t["avg_price"], fmt_str.format(avg_price))
         if show_raw or (not show_raw and tariff_type == t["tariff_pvpc"]):
-            m2.metric(t["min_price"], fmt % min_price, f"at {best_h}", delta_color="inverse")
-            m3.metric(t["max_price"], fmt % max_price, delta_color="normal")
+            m2.metric(t["min_price"], fmt_str.format(min_price), f"at {best_h}", delta_color="inverse")
+            m3.metric(t["max_price"], fmt_str.format(max_price), delta_color="normal")
         else:
-            m2.metric(t["your_rate"], fmt % df['Display_Price'].iloc[0])
+            m2.metric(t["your_rate"], fmt_str.format(df['Display_Price'].iloc[0]))
             m3.metric(t["tax_applied"], f"{int(tax_value*100)}%")
 
         # Chart
@@ -350,10 +357,11 @@ with tab1:
                 with c3:
                     if tariff_type == t["tariff_pvpc"]: st.success(f"**{t['calc_start']}** {df.loc[df['Roll'].idxmin(), 'Hour_Display']}")
                     else: st.info(f"**{t['calc_anytime']}**")
-                    st.metric(t["calc_cost"], fmt % cost)
+                    st.metric(t["calc_cost"], fmt_str.format(cost))
 
         with st.expander(t["view_table"]):
-            st.dataframe(df[['Hour_Display', 'Display_Price']].style.format({"Display_Price": fmt}), use_container_width=True)
+            # FIXED: Pass formatting string that pandas Styler understands ({})
+            st.dataframe(df[['Hour_Display', 'Display_Price']].style.format({"Display_Price": fmt_str}), use_container_width=True)
     else:
         st.error(f"{t['data_unavailable']} {day_select}.")
 
@@ -361,14 +369,13 @@ with tab1:
 with tab2:
     hist_df = get_historical_prices(day_select, country_choice)
     if hist_df is not None:
-        # Apply Calculation Logic to History (Approximate)
         if show_raw:
             hist_df['Display_Price'] = hist_df['Raw_Price_MWh']
             h_unit = "€/MWh"
-            fmt_hist = "%.3f €"
+            fmt_hist = "{:.3f} €"
         else:
             h_unit = "€/kWh"
-            fmt_hist = "%.3f €"
+            fmt_hist = "{:.3f} €"
             if tariff_type == t["tariff_fixed"]:
                 hist_df['Display_Price'] = fixed_price * (1 + tax_value)
             else:
@@ -389,8 +396,8 @@ with tab2:
         h_max = hist_df['Display_Price'].max()
         
         hc1, hc2, hc3 = st.columns(3)
-        hc1.metric(f"30-Day Avg", fmt_hist % h_avg)
-        hc2.metric("Min (Day)", fmt_hist % h_min)
-        hc3.metric("Max (Day)", fmt_hist % h_max)
+        hc1.metric(f"30-Day Avg", fmt_hist.format(h_avg))
+        hc2.metric("Min (Day)", fmt_hist.format(h_min))
+        hc3.metric("Max (Day)", fmt_hist.format(h_max))
     else:
         st.warning("History data not available.")
