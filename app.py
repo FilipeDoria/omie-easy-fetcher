@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
-from datetime import date, timedelta
+from datetime import date
 import plotly.express as px
 
 # --- Configuration ---
@@ -43,11 +43,10 @@ with st.sidebar:
     tax_value = st.number_input("VAT / IVA (%)", value=21.0, step=1.0) / 100
     
     # Access fees are usually included in Fixed Rates, but separate in PVPC.
-    # We allow the user to decide if they want to add extra fees.
     if tariff_type == "Market Price (PVPC)":
         access_fee = st.number_input("Grid Fees / Peajes (€/kWh)", value=0.040, step=0.001, format="%.3f")
     else:
-        access_fee = 0.0 # Usually fixed prices are "All inclusive" of grid fees, just adding tax.
+        access_fee = 0.0 
         
     st.markdown("---")
     st.markdown("Created with **Streamlit** & **Energy-Charts API**")
@@ -96,14 +95,10 @@ df = get_electricity_prices(day_select, country_choice)
 if df is not None and not df.empty:
     
     # --- CALCULATION ENGINE ---
-    # Determine the Final Price based on Tariff Choice
     if tariff_type == "Fixed Rate":
-        # Fixed Rate Logic: (User Rate) * Tax
-        # We ignore the OMIE price but keep it in the dataframe for reference/comparison if needed later
         df['Display_Price'] = fixed_price * (1 + tax_value)
         price_label = "Fixed Rate"
     else:
-        # Market PVPC Logic: (Market/1000 + Fees) * Tax
         df['Display_Price'] = (df['Raw_Price_MWh'] / 1000 + access_fee) * (1 + tax_value)
         price_label = "PVPC Price"
 
@@ -120,47 +115,41 @@ if df is not None and not df.empty:
         m2.metric("Lowest Price", f"{min_price:.3f} €/kWh", f"at {best_hour}", delta_color="inverse")
         m3.metric("Highest Price", f"{max_price:.3f} €/kWh", delta_color="normal")
     else:
-        # For fixed rate, min/max are the same, so we show simple metrics
         m2.metric("Your Rate", f"{fixed_price:.3f} €/kWh")
         m3.metric("Tax Applied", f"{int(tax_value*100)}%")
 
     # --- Interactive Chart ---
     st.markdown("---")
     
-    # Chart Title
-    chart_title = f"Electricity Prices ({tariff_type}) - {day_select}"
-    
-    # We use a Bar Chart
+    # Determine Colors (Fix for ZeroDivisionError)
+    if tariff_type == "Market Price (PVPC)":
+        chart_colors = "RdYlGn_r"
+    else:
+        # Must provide at least TWO colors for a continuous scale, even if identical
+        chart_colors = ["#2E86C1", "#2E86C1"]
+
     fig = px.bar(
         df, x="Hour_Display", y="Display_Price",
         color="Display_Price", 
-        color_continuous_scale="RdYlGn_r" if tariff_type == "Market Price (PVPC)" else ["#2E86C1"], # Green-Red for Market, Solid Blue for Fixed
-        title=chart_title,
+        color_continuous_scale=chart_colors,
+        title=f"Electricity Prices ({tariff_type}) - {day_select}",
         labels={"Display_Price": "Price (€/kWh)", "Hour_Display": "Hour"}
     )
     
-    # --- ADD BACKGROUND ZONES (Punta/Llano/Valle) ---
-    # We iterate 0-23 to add background rectangles
-    is_weekend = day_select.weekday() >= 5 # 5=Sat, 6=Sun
-    
-    # We group consecutive hours to avoid drawing 24 separate lines (optimization)
-    # But for simplicity and robustness, drawing 24 bars is fine for visual performance here.
+    # --- ADD BACKGROUND ZONES ---
+    is_weekend = day_select.weekday() >= 5
     for i in range(24):
         period_name, bg_color = get_tariff_period(i, is_weekend)
-        
-        # Add the colored background rectangle for this hour
-        # x0 = i - 0.5 (start of bar), x1 = i + 0.5 (end of bar)
         fig.add_shape(
             type="rect",
             x0=i-0.5, x1=i+0.5,
-            y0=0, y1=1, xref="x", yref="paper", # yref=paper means cover full height
+            y0=0, y1=1, xref="x", yref="paper",
             fillcolor=bg_color,
             line_width=0,
             layer="below"
         )
 
-    # Add legend-like annotations for the zones
-    # We only add them once at the top to explain the colors
+    # Legend for Zones
     if not is_weekend:
         fig.add_annotation(x=4, y=1.05, text="🟦 Valle", showarrow=False, xref="x", yref="paper", font=dict(color="blue"))
         fig.add_annotation(x=9, y=1.05, text="🟨 Llano", showarrow=False, xref="x", yref="paper", font=dict(color="#b5b500"))
@@ -186,19 +175,16 @@ if df is not None and not df.empty:
     
     if not df['Rolling_Avg'].dropna().empty:
         best_window_price = df['Rolling_Avg'].min()
-        best_window_start_idx = df['Rolling_Avg'].idxmin()
-        best_start_time = df.loc[best_window_start_idx, 'Hour_Display']
+        best_start_idx = df['Rolling_Avg'].idxmin()
+        best_start_time = df.loc[best_start_idx, 'Hour_Display']
         
-        # Cost Calculation
-        power_kw = appliance_power / 1000
-        total_trip_cost = power_kw * duration_hours * best_window_price
+        total_trip_cost = (appliance_power / 1000) * duration_hours * best_window_price
 
         with c3:
             if tariff_type == "Market Price (PVPC)":
                 st.success(f"**Best Start:** {best_start_time}")
             else:
                 st.info(f"**Start Anytime** (Fixed Rate)")
-            
             st.metric("Estimated Cost", f"{total_trip_cost:.2f} €")
     
     # --- Data Table ---
