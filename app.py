@@ -12,6 +12,8 @@ st.set_page_config(page_title="Iberian Energy Prices", page_icon="⚡", layout="
 LANGUAGES = {
     "English": {
         "title": "⚡ Iberian Electricity Prices",
+        "tab_daily": "📅 Daily View",
+        "tab_history": "📈 30-Day Trend",
         "select_date": "Select Date",
         "country": "Country",
         "settings": "⚙️ Settings",
@@ -39,6 +41,7 @@ LANGUAGES = {
         "tax_applied": "Tax Applied",
         "price_axis": "Price",
         "hour_axis": "Hour",
+        "date_axis": "Date",
         "now_label": "NOW",
         "verdict_good": "✅ Great time to use energy!",
         "verdict_bad": "❌ Expensive! Wait if possible.",
@@ -47,10 +50,14 @@ LANGUAGES = {
         "zone_llano": "Llano (Standard)",
         "zone_punta": "Punta (Peak)",
         "data_unavailable": "⚠️ Data not available for",
-        "raw_info": "Showing raw market data in €/MWh. Taxes and tariffs are hidden."
+        "raw_info": "Showing raw market data in €/MWh. Taxes and tariffs are hidden.",
+        "hist_title": "Price Evolution (Last 30 Days)",
+        "hist_avg_note": "Showing daily average prices."
     },
     "Español": {
         "title": "⚡ Precio de la Luz (OMIE)",
+        "tab_daily": "📅 Vista Diaria",
+        "tab_history": "📈 Tendencia 30 Días",
         "select_date": "Seleccionar Fecha",
         "country": "País",
         "settings": "⚙️ Configuración",
@@ -78,6 +85,7 @@ LANGUAGES = {
         "tax_applied": "Impuesto Aplicado",
         "price_axis": "Precio",
         "hour_axis": "Hora",
+        "date_axis": "Fecha",
         "now_label": "AHORA",
         "verdict_good": "✅ ¡Buen momento!",
         "verdict_bad": "❌ Caro. Espera si puedes.",
@@ -86,10 +94,14 @@ LANGUAGES = {
         "zone_llano": "Llano",
         "zone_punta": "Punta",
         "data_unavailable": "⚠️ Datos no disponibles para",
-        "raw_info": "Mostrando datos crudos en €/MWh. Sin impuestos ni peajes."
+        "raw_info": "Mostrando datos crudos en €/MWh. Sin impuestos ni peajes.",
+        "hist_title": "Evolución de Precios (Últimos 30 Días)",
+        "hist_avg_note": "Mostrando precios medios diarios."
     },
     "Português": {
         "title": "⚡ Preço da Eletricidade (OMIE)",
+        "tab_daily": "📅 Visão Diária",
+        "tab_history": "📈 Tendência 30 Dias",
         "select_date": "Selecionar Data",
         "country": "País",
         "settings": "⚙️ Configurações",
@@ -117,6 +129,7 @@ LANGUAGES = {
         "tax_applied": "Imposto Aplicado",
         "price_axis": "Preço",
         "hour_axis": "Hora",
+        "date_axis": "Data",
         "now_label": "AGORA",
         "verdict_good": "✅ Bom momento!",
         "verdict_bad": "❌ Caro. Espere se puder.",
@@ -125,11 +138,13 @@ LANGUAGES = {
         "zone_llano": "Cheias (Llano)",
         "zone_punta": "Ponta (Punta)",
         "data_unavailable": "⚠️ Dados não disponíveis para",
-        "raw_info": "Mostrando dados brutos em €/MWh. Sem impostos ou taxas."
+        "raw_info": "Mostrando dados brutos em €/MWh. Sem impostos ou taxas.",
+        "hist_title": "Evolução de Preços (Últimos 30 Dias)",
+        "hist_avg_note": "Mostrando preços médios diários."
     }
 }
 
-# --- Function to determine Tariff Period (2.0TD Spain Logic) ---
+# --- Function to determine Tariff Period ---
 def get_tariff_period(hour, is_weekend, texts):
     if is_weekend:
         return texts["zone_valle"], "rgba(0, 0, 255, 0.1)"
@@ -142,25 +157,19 @@ def get_tariff_period(hour, is_weekend, texts):
 
 # --- Sidebar: Settings ---
 with st.sidebar:
-    # Language Selector
     lang_choice = st.selectbox("Language / Idioma", ["English", "Español", "Português"])
-    t = LANGUAGES[lang_choice] # Load translation dictionary
+    t = LANGUAGES[lang_choice]
     
     st.header(t["settings"])
-    
-    # Show Raw Toggle
     show_raw = st.toggle(t["show_raw"], value=False)
     
     if not show_raw:
         tariff_type = st.radio(t["tariff_type"], [t["tariff_pvpc"], t["tariff_fixed"]], index=0)
-        
         if tariff_type == t["tariff_fixed"]:
             fixed_price = st.number_input(t["fixed_price_label"], value=0.060, step=0.001, format="%.3f")
-        
         st.divider()
         st.subheader(t["taxes"])
         tax_value = st.number_input(t["vat"], value=21.0, step=1.0) / 100
-        
         if tariff_type == t["tariff_pvpc"]:
             access_fee = st.number_input(t["fees"], value=0.040, step=0.001, format="%.3f")
         else:
@@ -173,197 +182,211 @@ with st.sidebar:
     st.markdown("---")
     st.caption("Created with **Streamlit** & **Energy-Charts API**")
 
-# --- DATE LOGIC: Prevent Future Dates ---
-# OMIE prices for tomorrow are usually released around 13:30 CET
-now_cet = datetime.now(pytz.timezone('Europe/Madrid'))
-if now_cet.hour >= 13 and now_cet.minute >= 30:
-    max_allowed_date = now_cet.date() + timedelta(days=1)
-else:
-    max_allowed_date = now_cet.date()
-
-# --- Main App Layout ---
-st.title(t["title"])
-
-col1, col2 = st.columns(2)
-with col1:
-    day_select = st.date_input(t["select_date"], date.today(), max_value=max_allowed_date)
-with col2:
-    country_choice = st.radio(t["country"], ["Spain (ES)", "Portugal (PT)"], horizontal=True)
-
-# --- Fetch Data Function (Correct Timezones) ---
+# --- DATA FUNCTIONS ---
 @st.cache_data(ttl=3600)
-def get_electricity_prices(selected_date, country_code):
+def get_daily_prices(selected_date, country_code):
+    """Fetch 1 day of data."""
     date_str = selected_date.strftime("%Y-%m-%d")
     bzn = "ES" if country_code == "Spain (ES)" else "PT"
-    
-    # IMPORTANT: Set the correct timezone for the chart
     target_tz = 'Europe/Lisbon' if bzn == "PT" else 'Europe/Madrid'
-    
     url = f"https://api.energy-charts.info/price?bzn={bzn}&start={date_str}&end={date_str}"
     
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
+        if 'unix_seconds' not in data or 'price' not in data: return None, None
         
-        if 'unix_seconds' not in data or 'price' not in data:
-            return None, None
-            
         df = pd.DataFrame({
             'Timestamp': pd.to_datetime(data['unix_seconds'], unit='s').tz_localize('UTC').tz_convert(target_tz),
             'Raw_Price_MWh': data['price']
         })
-        
-        # Resample to Hourly
         df = df.set_index('Timestamp').resample('1h').mean().reset_index()
         df['Hour_Display'] = df['Timestamp'].dt.strftime('%H:00')
         df['Hour_Int'] = df['Timestamp'].dt.hour
         return df, target_tz
+    except: return None, None
 
-    except Exception as e:
-        return None, None
-
-df, current_tz = get_electricity_prices(day_select, country_choice)
-
-if df is not None and not df.empty:
+@st.cache_data(ttl=3600)
+def get_historical_prices(end_date, country_code, days=30):
+    """Fetch 30 days of data for trend analysis."""
+    start_date = end_date - timedelta(days=days)
+    start_str = start_date.strftime("%Y-%m-%d")
+    end_str = end_date.strftime("%Y-%m-%d")
+    bzn = "ES" if country_code == "Spain (ES)" else "PT"
+    url = f"https://api.energy-charts.info/price?bzn={bzn}&start={start_str}&end={end_str}"
     
-    # --- CALCULATION ENGINE ---
-    if show_raw:
-        df['Display_Price'] = df['Raw_Price_MWh']
-        price_label = "MWh"
-        unit_label = "€/MWh"
-        fmt = "%.2f €" # 2 decimals for MWh
-        chart_colors = "RdYlGn_r"
-    else:
-        unit_label = "€/kWh"
-        fmt = "%.4f €" # 4 decimals for consumer precision
-        if tariff_type == t["tariff_fixed"]:
-            df['Display_Price'] = fixed_price * (1 + tax_value)
-            price_label = t["tariff_fixed"]
-            chart_colors = ["#2E86C1", "#2E86C1"]
-        else:
-            df['Display_Price'] = (df['Raw_Price_MWh'] / 1000 + access_fee) * (1 + tax_value)
-            price_label = t["tariff_pvpc"]
-            chart_colors = "RdYlGn_r"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        if 'unix_seconds' not in data or 'price' not in data: return None
+        
+        df = pd.DataFrame({
+            'Timestamp': pd.to_datetime(data['unix_seconds'], unit='s'),
+            'Raw_Price_MWh': data['price']
+        })
+        # Group by Date (Daily Average)
+        df['Date'] = df['Timestamp'].dt.date
+        daily_avg = df.groupby('Date')['Raw_Price_MWh'].mean().reset_index()
+        return daily_avg
+    except: return None
 
-    # --- 🟢 LIVE STATUS SECTION ---
-    if day_select == date.today():
-        # Get current time in the selected country's timezone
-        now_local = datetime.now(pytz.timezone(current_tz))
-        current_hour_int = now_local.hour
-        
-        current_row = df.loc[df['Hour_Int'] == current_hour_int]
-        
-        if not current_row.empty:
-            curr_price = current_row['Display_Price'].values[0]
-            avg_price_today = df['Display_Price'].mean()
-            
-            if curr_price < avg_price_today * 0.9:
-                verdict = t["verdict_good"]
-                verdict_color = "green"
-            elif curr_price > avg_price_today * 1.1:
-                verdict = t["verdict_bad"]
-                verdict_color = "red"
+# --- MAIN APP ---
+st.title(t["title"])
+
+# Date Blocker
+now_cet = datetime.now(pytz.timezone('Europe/Madrid'))
+max_allowed = now_cet.date() + timedelta(days=1) if now_cet.hour >= 13 and now_cet.minute >= 30 else now_cet.date()
+
+col1, col2 = st.columns(2)
+with col1:
+    day_select = st.date_input(t["select_date"], date.today(), max_value=max_allowed)
+with col2:
+    country_choice = st.radio(t["country"], ["Spain (ES)", "Portugal (PT)"], horizontal=True)
+
+# --- TABS LAYOUT ---
+tab1, tab2 = st.tabs([t["tab_daily"], t["tab_history"]])
+
+# === TAB 1: DAILY VIEW ===
+with tab1:
+    df, current_tz = get_daily_prices(day_select, country_choice)
+
+    if df is not None and not df.empty:
+        # Calc Engine
+        if show_raw:
+            df['Display_Price'] = df['Raw_Price_MWh']
+            price_label, unit_label, fmt, chart_colors = "MWh", "€/MWh", "%.3f €", "RdYlGn_r"
+        else:
+            unit_label, fmt = "€/kWh", "%.3f €"
+            if tariff_type == t["tariff_fixed"]:
+                df['Display_Price'] = fixed_price * (1 + tax_value)
+                price_label, chart_colors = t["tariff_fixed"], ["#2E86C1", "#2E86C1"]
             else:
-                verdict = t["verdict_avg"]
-                verdict_color = "orange"
+                df['Display_Price'] = (df['Raw_Price_MWh'] / 1000 + access_fee) * (1 + tax_value)
+                price_label, chart_colors = t["tariff_pvpc"], "RdYlGn_r"
 
-            st.markdown(f"### {t['now_label']} ({now_local.strftime('%H:%M')})")
-            c1, c2 = st.columns([1, 2])
-            with c1:
-                st.metric(t['price_axis'], fmt % curr_price, delta=f"{curr_price - avg_price_today:.3f}", delta_color="inverse")
-            with c2:
-                st.markdown(f"#### :{verdict_color}[{verdict}]")
-            st.divider()
+        # Live Status
+        if day_select == date.today():
+            now_local = datetime.now(pytz.timezone(current_tz))
+            curr_row = df.loc[df['Hour_Int'] == now_local.hour]
+            if not curr_row.empty:
+                cp = curr_row['Display_Price'].values[0]
+                avg = df['Display_Price'].mean()
+                if cp < avg * 0.9: v_txt, v_col = t["verdict_good"], "green"
+                elif cp > avg * 1.1: v_txt, v_col = t["verdict_bad"], "red"
+                else: v_txt, v_col = t["verdict_avg"], "orange"
+                st.markdown(f"### {t['now_label']} ({now_local.strftime('%H:%M')})")
+                c1, c2 = st.columns([1, 2])
+                c1.metric(t['price_axis'], fmt % cp, delta=f"{cp - avg:.3f}", delta_color="inverse")
+                c2.markdown(f"#### :{v_col}[{v_txt}]")
+                st.divider()
 
-    # --- Metrics ---
-    avg_price = df['Display_Price'].mean()
-    min_price = df['Display_Price'].min()
-    max_price = df['Display_Price'].max()
-    best_hour = df.loc[df['Display_Price'] == min_price, 'Hour_Display'].iloc[0]
+        # Metrics
+        avg_price = df['Display_Price'].mean()
+        min_price = df['Display_Price'].min()
+        max_price = df['Display_Price'].max()
+        best_h = df.loc[df['Display_Price'] == min_price, 'Hour_Display'].iloc[0]
 
-    st.markdown(f"### 📊 {t['daily_summary']} ({unit_label})")
-    m1, m2, m3 = st.columns(3)
-    m1.metric(t["avg_price"], fmt % avg_price)
-    
-    if show_raw or (not show_raw and tariff_type == t["tariff_pvpc"]):
-        m2.metric(t["min_price"], fmt % min_price, f"at {best_hour}", delta_color="inverse")
-        m3.metric(t["max_price"], fmt % max_price, delta_color="normal")
-    else:
-        m2.metric(t["your_rate"], fmt % df['Display_Price'].iloc[0])
-        m3.metric(t["tax_applied"], f"{int(tax_value*100)}%")
-
-    # --- Interactive Chart ---
-    st.markdown("---")
-    
-    fig = px.bar(
-        df, x="Hour_Display", y="Display_Price",
-        color="Display_Price", 
-        color_continuous_scale=chart_colors,
-        title=f"{price_label} - {day_select}",
-        labels={"Display_Price": f"{t['price_axis']} ({unit_label})", "Hour_Display": t['hour_axis']}
-    )
-    
-    # --- ADD BACKGROUND ZONES (With Translated Legend) ---
-    if not show_raw:
-        is_weekend = day_select.weekday() >= 5
-        for i in range(24):
-            period_name, bg_color = get_tariff_period(i, is_weekend, t)
-            fig.add_shape(type="rect", x0=i-0.5, x1=i+0.5, y0=0, y1=1, xref="x", yref="paper", fillcolor=bg_color, line_width=0, layer="below")
-        
-        # Legend (Translated)
-        if not is_weekend:
-            fig.add_annotation(x=3, y=1.07, text=f"🟦 {t['zone_valle']}", showarrow=False, xref="x", yref="paper", font=dict(color="blue", size=10))
-            fig.add_annotation(x=10, y=1.07, text=f"🟨 {t['zone_llano']}", showarrow=False, xref="x", yref="paper", font=dict(color="#b5b500", size=10))
-            fig.add_annotation(x=17, y=1.07, text=f"🟥 {t['zone_punta']}", showarrow=False, xref="x", yref="paper", font=dict(color="red", size=10))
+        st.markdown(f"### 📊 {t['daily_summary']} ({unit_label})")
+        m1, m2, m3 = st.columns(3)
+        m1.metric(t["avg_price"], fmt % avg_price)
+        if show_raw or (not show_raw and tariff_type == t["tariff_pvpc"]):
+            m2.metric(t["min_price"], fmt % min_price, f"at {best_h}", delta_color="inverse")
+            m3.metric(t["max_price"], fmt % max_price, delta_color="normal")
         else:
-            fig.add_annotation(x=12, y=1.07, text=f"🟦 {t['zone_valle']}", showarrow=False, xref="x", yref="paper", font=dict(color="blue", size=10))
+            m2.metric(t["your_rate"], fmt % df['Display_Price'].iloc[0])
+            m3.metric(t["tax_applied"], f"{int(tax_value*100)}%")
 
-    # --- NOW LINE (Timezone Corrected) ---
-    if day_select == date.today():
-        now_local = datetime.now(pytz.timezone(current_tz))
-        now_hour_str = now_local.strftime('%H:00')
-        fig.add_vline(x=now_hour_str, line_width=2, line_dash="dash", line_color="black")
-        fig.add_annotation(x=now_hour_str, y=1.02, text=t["now_label"], showarrow=False, xref="x", yref="paper", font=dict(color="black", size=10, weight="bold"))
-
-    fig.update_layout(
-        xaxis=dict(fixedrange=True, title=None),
-        yaxis=dict(fixedrange=True, title=None),
-        coloraxis_showscale=False,
-        hovermode="x unified",
-        margin=dict(l=10, r=10, t=50, b=10)
-    )
-    
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-
-    # --- CALCULATOR ---
-    if show_calculator and not show_raw:
-        st.markdown(f"### {t['calc_title']}")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            appliance_power = st.number_input(t["calc_power"], value=2000, step=100)
-        with c2:
-            duration_hours = st.number_input(t["calc_duration"], value=2, min_value=1, max_value=12)
+        # Chart
+        st.markdown("---")
+        fig = px.bar(
+            df, 
+            x="Hour_Display", 
+            y="Display_Price", 
+            color="Display_Price", 
+            color_continuous_scale=chart_colors, 
+            title=f"{price_label} - {day_select}", 
+            labels={"Display_Price": f"{t['price_axis']} ({unit_label})", "Hour_Display": t['hour_axis']}
+        )
         
-        df['Rolling_Avg'] = df['Display_Price'].rolling(window=duration_hours).mean().shift(1 - duration_hours)
-        if not df['Rolling_Avg'].dropna().empty:
-            best_val = df['Rolling_Avg'].min()
-            best_idx = df['Rolling_Avg'].idxmin()
-            best_time = df.loc[best_idx, 'Hour_Display']
-            cost = (appliance_power / 1000) * duration_hours * best_val
-            with c3:
-                if tariff_type == t["tariff_pvpc"]:
-                    st.success(f"**{t['calc_start']}** {best_time}")
-                else:
-                    st.info(f"**{t['calc_anytime']}**")
-                st.metric(t["calc_cost"], fmt % cost)
+        # Round tooltips to 3 decimal places
+        fig.update_traces(hovertemplate=f"{t['hour_axis']}: %{{x}}<br>{t['price_axis']}: %{{y:.3f}} {unit_label}")
 
-    # --- Data Table & Download ---
-    with st.expander(t["view_table"]):
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(label=t["download_csv"], data=csv, file_name=f"prices_{day_select}.csv", mime="text/csv")
-        st.dataframe(df[['Hour_Display', 'Display_Price']].style.format({"Display_Price": fmt}), use_container_width=True)
-
-else:
-    st.error(f"{t['data_unavailable']} {day_select}.")
+        if not show_raw:
+            is_weekend = day_select.weekday() >= 5
+            for i in range(24):
+                p_name, bg_col = get_tariff_period(i, is_weekend, t)
+                fig.add_shape(type="rect", x0=i-0.5, x1=i+0.5, y0=0, y1=1, xref="x", yref="paper", fillcolor=bg_col, line_width=0, layer="below")
+            
+            # Translated Legend
+            if not is_weekend:
+                fig.add_annotation(x=3, y=1.07, text=f"🟦 {t['zone_valle']}", showarrow=False, xref="x", yref="paper", font=dict(color="blue", size=10))
+                fig.add_annotation(x=10, y=1.07, text=f"🟨 {t['zone_llano']}", showarrow=False, xref="x", yref="paper", font=dict(color="#b5b500", size=10))
+                fig.add_annotation(x=17, y=1.07, text=f"🟥 {t['zone_punta']}", showarrow=False, xref="x", yref="paper", font=dict(color="red", size=10))
+            else:
+                fig.add_annotation(x=12, y=1.07, text=f"🟦 {t['zone_valle']}", showarrow=False, xref="x", yref="paper", font=dict(color="blue", size=10))
         
+        if day_select == date.today():
+            now_str = datetime.now(pytz.timezone(current_tz)).strftime('%H:00')
+            fig.add_vline(x=now_str, line_width=2, line_dash="dash", line_color="black")
+
+        fig.update_layout(xaxis=dict(fixedrange=True, title=None), yaxis=dict(fixedrange=True, title=None), coloraxis_showscale=False, hovermode="x unified", margin=dict(l=10, r=10, t=50, b=10))
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
+        # Calculator
+        if show_calculator and not show_raw:
+            st.markdown(f"### {t['calc_title']}")
+            c1, c2, c3 = st.columns(3)
+            with c1: ap = st.number_input(t["calc_power"], value=2000, step=100)
+            with c2: dh = st.number_input(t["calc_duration"], value=2, min_value=1)
+            df['Roll'] = df['Display_Price'].rolling(window=dh).mean().shift(1 - dh)
+            if not df['Roll'].dropna().empty:
+                cost = (ap/1000)*dh*df['Roll'].min()
+                with c3:
+                    if tariff_type == t["tariff_pvpc"]: st.success(f"**{t['calc_start']}** {df.loc[df['Roll'].idxmin(), 'Hour_Display']}")
+                    else: st.info(f"**{t['calc_anytime']}**")
+                    st.metric(t["calc_cost"], fmt % cost)
+
+        with st.expander(t["view_table"]):
+            st.dataframe(df[['Hour_Display', 'Display_Price']].style.format({"Display_Price": fmt}), use_container_width=True)
+    else:
+        st.error(f"{t['data_unavailable']} {day_select}.")
+
+# === TAB 2: HISTORY VIEW ===
+with tab2:
+    hist_df = get_historical_prices(day_select, country_choice)
+    if hist_df is not None:
+        # Apply Calculation Logic to History (Approximate)
+        if show_raw:
+            hist_df['Display_Price'] = hist_df['Raw_Price_MWh']
+            h_unit = "€/MWh"
+            fmt_hist = "%.3f €"
+        else:
+            h_unit = "€/kWh"
+            fmt_hist = "%.3f €"
+            if tariff_type == t["tariff_fixed"]:
+                hist_df['Display_Price'] = fixed_price * (1 + tax_value)
+            else:
+                hist_df['Display_Price'] = (hist_df['Raw_Price_MWh'] / 1000 + access_fee) * (1 + tax_value)
+
+        st.markdown(f"### {t['hist_title']}")
+        st.caption(t['hist_avg_note'])
+        
+        # Line Chart
+        fig_h = px.line(hist_df, x="Date", y="Display_Price", markers=True, title=f"Average {h_unit}", labels={"Display_Price": t['price_axis'], "Date": t['date_axis']})
+        fig_h.update_traces(hovertemplate=f"{t['date_axis']}: %{{x}}<br>{t['price_axis']}: %{{y:.3f}} {h_unit}")
+        fig_h.update_layout(xaxis=dict(fixedrange=True), yaxis=dict(fixedrange=True), hovermode="x unified")
+        st.plotly_chart(fig_h, use_container_width=True, config={'displayModeBar': False})
+        
+        # Stats
+        h_avg = hist_df['Display_Price'].mean()
+        h_min = hist_df['Display_Price'].min()
+        h_max = hist_df['Display_Price'].max()
+        
+        hc1, hc2, hc3 = st.columns(3)
+        hc1.metric(f"30-Day Avg", fmt_hist % h_avg)
+        hc2.metric("Min (Day)", fmt_hist % h_min)
+        hc3.metric("Max (Day)", fmt_hist % h_max)
+    else:
+        st.warning("History data not available.")
