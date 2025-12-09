@@ -157,7 +157,7 @@ LANGUAGES = {
         "grid_p1_input": "Taxa Ponta (P1) (€/kWh)",
         "grid_p2_input": "Taxa Cheias (P2) (€/kWh)",
         "grid_p3_input": "Taxa Vazio (P3) (€/kWh)",
-        "calc_title": "⏱️ Planejar Consumo",
+        "calc_title": "⏱️ Planificador de Consumo",
         "calc_power": "Potência (W)",
         "calc_duration": "Duração (Horas)",
         "calc_cost": "Custo Estimado",
