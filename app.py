@@ -169,7 +169,7 @@ LANGUAGES = {
         "avg_price": "Preço Médio",
         "min_price": "Mínimo",
         "max_price": "Máximo",
-        "your_rate": "Sua Taxa Fixa",
+        "your_rate": "Sua Tarifa Fixa",
         "tax_applied": "Imposto Aplicado",
         "price_axis": "Preço",
         "hour_axis": "Hora",
@@ -442,7 +442,7 @@ with tab1:
                 line_dash="dash", 
                 line_color="#2E86C1", 
                 line_width=3,
-                annotation_text=f"{t['your_rate']} ({fixed_price_final:.3f})", 
+                annotation_text=f"{t['your_rate']} ({fixed_price_final:.3f} €)", 
                 annotation_position="top left"
             )
 
