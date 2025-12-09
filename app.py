@@ -4,31 +4,9 @@ import requests
 from datetime import date, timedelta, datetime
 import plotly.express as px
 import pytz
-import os
 
-# --- Configuration & Branding ---
-st.set_page_config(
-    page_title="Iberian Energy Prices",
-    page_icon="⚡", # You can replace "⚡" with the path to an image: "assets/icon.png"
-    layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'Get Help': 'https://www.omie.es/',
-        'Report a bug': "https://github.com/",
-        'About': """
-        ### ⚡ Iberian Energy Prices
-        **Track real-time electricity prices in Spain & Portugal.**
-        
-        This app uses the OMIE market data via Energy-Charts API to help you decide the best time to consume energy.
-        
-        *Version 2.0 - Multi-tariff & Fixed Rate Comparison*
-        """
-    }
-)
-
-# --- LOGO SETUP ---
-# If you have a logo file, place it in an 'assets' folder and uncomment the next line:
-# st.logo("assets/logo.png", link="https://your-app-url.streamlit.app")
+# --- Configuration ---
+st.set_page_config(page_title="Iberian Energy Prices", page_icon="⚡", layout="wide")
 
 # --- 🔗 URL PARAMETER HANDLING ---
 qp = st.query_params
@@ -42,10 +20,17 @@ def get_param(key, default_val, type_func):
         return default_val
 
 # Defaults
-default_lang_idx = get_param("lang_idx", 2, int)
+default_lang_idx = get_param("lang_idx", 2, int) # Default Portuguese
 default_vat = get_param("vat", 23.0, float)
-default_fee = get_param("fee", 0.025, float)
-default_show_fixed = get_param("show_fixed", False, lambda x: x.lower() == 'true')
+default_comm_fee = get_param("comm_fee", 0.025, float) # Commercial Operator Fee
+default_grid_type = get_param("grid_type", "Fixed", str) # Fixed or Variable
+default_grid_fixed = get_param("grid_fixed", 0.060, float) # Grid Access Fee (Fixed)
+# Variable Grid Defaults (Approximate examples)
+default_grid_p1 = get_param("grid_p1", 0.100, float) # Peak
+default_grid_p2 = get_param("grid_p2", 0.040, float) # Standard
+default_grid_p3 = get_param("grid_p3", 0.010, float) # Off-Peak
+
+default_show_fixed_comp = get_param("show_fixed_comp", False, lambda x: x.lower() == 'true')
 default_fixed_val = get_param("fixed_val", 0.120, float)
 
 # --- 🌍 TRANSLATION ENGINE ---
@@ -62,7 +47,14 @@ LANGUAGES = {
         "fixed_input": "Your Fixed Energy Price (€/kWh)",
         "taxes": "Taxes & Fees",
         "vat": "VAT / IVA (%)",
-        "fees": "Grid Fees / Peajes (€/kWh)",
+        "comm_fee_label": "Commercial Margin (€/kWh)",
+        "grid_fee_label": "Grid Access Fees",
+        "grid_type_fixed": "Fixed",
+        "grid_type_var": "Variable (Time-of-Use)",
+        "grid_fixed_input": "Fixed Grid Fee (€/kWh)",
+        "grid_p1_input": "Peak Fee (Punta) (€/kWh)",
+        "grid_p2_input": "Standard Fee (Llano) (€/kWh)",
+        "grid_p3_input": "Off-Peak Fee (Valle) (€/kWh)",
         "calc_title": "⏱️ Plan Your Usage",
         "calc_power": "Power (Watts)",
         "calc_duration": "Duration (Hours)",
@@ -106,7 +98,14 @@ LANGUAGES = {
         "fixed_input": "Precio Energía Fijo (€/kWh)",
         "taxes": "Impuestos y Peajes",
         "vat": "IVA (%)",
-        "fees": "Peajes / Cargos (€/kWh)",
+        "comm_fee_label": "Margen Comercial (€/kWh)",
+        "grid_fee_label": "Peajes de Acceso",
+        "grid_type_fixed": "Fijo",
+        "grid_type_var": "Variable (Horario)",
+        "grid_fixed_input": "Peaje Fijo (€/kWh)",
+        "grid_p1_input": "Peaje Punta (P1) (€/kWh)",
+        "grid_p2_input": "Peaje Llano (P2) (€/kWh)",
+        "grid_p3_input": "Peaje Valle (P3) (€/kWh)",
         "calc_title": "⏱️ Planificador de Consumo",
         "calc_power": "Potencia (W)",
         "calc_duration": "Duración (Horas)",
@@ -150,7 +149,14 @@ LANGUAGES = {
         "fixed_input": "Seu Preço Fixo (€/kWh)",
         "taxes": "Impostos e Taxas",
         "vat": "IVA (%)",
-        "fees": "Taxas de Acesso (€/kWh)",
+        "comm_fee_label": "Margem Comercial (€/kWh)",
+        "grid_fee_label": "Tarifas de Acesso às Redes",
+        "grid_type_fixed": "Fixo",
+        "grid_type_var": "Variável (Horário)",
+        "grid_fixed_input": "Acesso Fixo (€/kWh)",
+        "grid_p1_input": "Taxa Ponta (P1) (€/kWh)",
+        "grid_p2_input": "Taxa Cheias (P2) (€/kWh)",
+        "grid_p3_input": "Taxa Vazio (P3) (€/kWh)",
         "calc_title": "⏱️ Planejar Consumo",
         "calc_power": "Potência (W)",
         "calc_duration": "Duração (Horas)",
@@ -184,16 +190,28 @@ LANGUAGES = {
     }
 }
 
-# --- Function to determine Tariff Period ---
-def get_tariff_period(hour, is_weekend, texts):
+# --- Helper: Get Period Key (P1, P2, P3) ---
+def get_period_key(hour, is_weekend):
+    """Returns the period key (P3=Valle, P2=Llano, P1=Punta) for calculation."""
     if is_weekend:
-        return texts["zone_valle"], "rgba(0, 0, 255, 0.1)"
+        return "P3"
     if 0 <= hour < 8:
-        return texts["zone_valle"], "rgba(0, 0, 255, 0.1)"
+        return "P3"
     elif (8 <= hour < 10) or (14 <= hour < 18) or (22 <= hour < 24):
-        return texts["zone_llano"], "rgba(255, 255, 0, 0.1)"
+        return "P2"
     else:
-        return texts["zone_punta"], "rgba(255, 0, 0, 0.1)"
+        return "P1"
+
+# --- Helper: Get Display Text & Color ---
+def get_tariff_period_display(hour, is_weekend, texts):
+    """Returns the period name and color for the chart."""
+    key = get_period_key(hour, is_weekend)
+    if key == "P3":
+        return texts["zone_valle"], "rgba(0, 0, 255, 0.1)" # Blue
+    elif key == "P2":
+        return texts["zone_llano"], "rgba(255, 255, 0, 0.1)" # Yellow
+    else:
+        return texts["zone_punta"], "rgba(255, 0, 0, 0.1)" # Red
 
 # --- Sidebar: Settings ---
 with st.sidebar:
@@ -207,8 +225,8 @@ with st.sidebar:
     show_raw = st.toggle(t["show_raw"], value=False)
     
     if not show_raw:
-        show_fixed = st.toggle(t["comp_toggle"], value=default_show_fixed)
-        st.query_params["show_fixed"] = str(show_fixed)
+        show_fixed = st.toggle(t["comp_toggle"], value=default_show_fixed_comp)
+        st.query_params["show_fixed_comp"] = str(show_fixed)
         
         fixed_price_final = 0.0
         if show_fixed:
@@ -217,14 +235,46 @@ with st.sidebar:
         
         st.divider()
         st.subheader(t["taxes"])
+        
+        # 1. Taxes
         tax_input = st.number_input(t["vat"], value=default_vat, step=1.0)
         st.query_params["vat"] = tax_input
         tax_value = tax_input / 100
         
-        fee_input = st.number_input(t["fees"], value=default_fee, step=0.001, format="%.3f")
-        st.query_params["fee"] = fee_input
-        access_fee = fee_input
+        # 2. Commercial Fee
+        comm_input = st.number_input(t["comm_fee_label"], value=default_comm_fee, step=0.001, format="%.3f")
+        st.query_params["comm_fee"] = comm_input
         
+        # 3. Grid Fees Selector
+        st.markdown(f"**{t['grid_fee_label']}**")
+        grid_options = [t["grid_type_fixed"], t["grid_type_var"]]
+        # Restore previous selection logic if possible, else default Fixed
+        grid_type_idx = 0 if default_grid_type == "Fixed" else 1
+        grid_type_sel = st.radio("Type", grid_options, index=grid_type_idx, horizontal=True, label_visibility="collapsed")
+        
+        grid_fee_p1, grid_fee_p2, grid_fee_p3 = 0.0, 0.0, 0.0
+        
+        if grid_type_sel == t["grid_type_fixed"]:
+            st.query_params["grid_type"] = "Fixed"
+            grid_fixed_val = st.number_input(t["grid_fixed_input"], value=default_grid_fixed, step=0.001, format="%.3f")
+            st.query_params["grid_fixed"] = grid_fixed_val
+            # Apply same fee to all periods
+            grid_fee_p1 = grid_fee_p2 = grid_fee_p3 = grid_fixed_val
+        else:
+            st.query_params["grid_type"] = "Variable"
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                grid_fee_p1 = st.number_input("Punta (P1)", value=default_grid_p1, step=0.001, format="%.3f", help=t["grid_p1_input"])
+            with c2:
+                grid_fee_p2 = st.number_input("Cheias (P2)", value=default_grid_p2, step=0.001, format="%.3f", help=t["grid_p2_input"])
+            with c3:
+                grid_fee_p3 = st.number_input("Vazio (P3)", value=default_grid_p3, step=0.001, format="%.3f", help=t["grid_p3_input"])
+            
+            st.query_params["grid_p1"] = grid_fee_p1
+            st.query_params["grid_p2"] = grid_fee_p2
+            st.query_params["grid_p3"] = grid_fee_p3
+
+        # Fixed Price Final Calc
         if show_fixed:
             fixed_price_final = fixed_val_input * (1 + tax_value)
             
@@ -239,7 +289,6 @@ with st.sidebar:
 # --- DATA FUNCTIONS ---
 @st.cache_data(ttl=3600)
 def get_daily_prices(selected_date, country_code):
-    """Fetch 1 day of data."""
     date_str = selected_date.strftime("%Y-%m-%d")
     bzn = "ES" if country_code == "Spain (ES)" else "PT"
     target_tz = 'Europe/Lisbon' if bzn == "PT" else 'Europe/Madrid'
@@ -263,7 +312,6 @@ def get_daily_prices(selected_date, country_code):
 
 @st.cache_data(ttl=3600)
 def get_historical_prices(end_date, country_code, days=30):
-    """Fetch 30 days of data."""
     start_date = end_date - timedelta(days=days)
     start_str = start_date.strftime("%Y-%m-%d")
     end_str = end_date.strftime("%Y-%m-%d")
@@ -309,6 +357,7 @@ with tab1:
     df, current_tz = get_daily_prices(day_select, country_choice)
 
     if df is not None and not df.empty:
+        # --- CALCULATION LOGIC ---
         if show_raw:
             df['Display_Price'] = df['Raw_Price_MWh']
             unit_label, chart_colors = "€/MWh", "RdYlGn_r"
@@ -318,15 +367,33 @@ with tab1:
             unit_label = "€/kWh"
             fmt_str = "{:.3f} €"
             title_label = "PVPC"
-            df['Display_Price'] = (df['Raw_Price_MWh'] / 1000 + access_fee) * (1 + tax_value)
             chart_colors = "RdYlGn_r"
+            
+            # --- APPLY VARIABLE GRID FEES ---
+            # 1. Determine period for each row
+            is_weekend = day_select.weekday() >= 5
+            
+            def apply_grid_fee(row):
+                p_key = get_period_key(row['Hour_Int'], is_weekend)
+                if p_key == "P1": return grid_fee_p1
+                if p_key == "P2": return grid_fee_p2
+                return grid_fee_p3 # P3
 
+            df['Grid_Fee_Applied'] = df.apply(apply_grid_fee, axis=1)
+            
+            # 2. Formula: (Market/1000 + CommFee + GridFee) * (1 + Tax)
+            df['Display_Price'] = (
+                (df['Raw_Price_MWh'] / 1000) + comm_input + df['Grid_Fee_Applied']
+            ) * (1 + tax_value)
+
+        # --- LIVE STATUS ---
         if day_select == date.today():
             now_local = datetime.now(pytz.timezone(current_tz))
             curr_row = df.loc[df['Hour_Int'] == now_local.hour]
             if not curr_row.empty:
                 cp = curr_row['Display_Price'].values[0]
                 avg = df['Display_Price'].mean()
+                
                 if not show_raw and show_fixed:
                     if cp < fixed_price_final:
                         v_txt, v_col = t["verdict_fixed_win"], "green"
@@ -384,7 +451,7 @@ with tab1:
         if not show_raw:
             is_weekend = day_select.weekday() >= 5
             for i in range(24):
-                p_name, bg_col = get_tariff_period(i, is_weekend, t)
+                p_name, bg_col = get_tariff_period_display(i, is_weekend, t)
                 fig.add_shape(type="rect", x0=i-0.5, x1=i+0.5, y0=0, y1=1, xref="x", yref="paper", fillcolor=bg_col, line_width=0, layer="below")
             
             if not is_weekend:
@@ -429,7 +496,17 @@ with tab2:
         else:
             h_unit = "€/kWh"
             fmt_hist = "{:.3f} €"
-            hist_df['Display_Price'] = (hist_df['Raw_Price_MWh'] / 1000 + access_fee) * (1 + tax_value)
+            # NOTE: History is approximate (uses average Grid Fee for simplicity or defaults)
+            # Since history is Daily Avg, we cannot easily apply hourly variable fees.
+            # We will use the 'Standard' (P2) fee as a proxy or just the Fixed fee if selected.
+            
+            # Simple Proxy: (Market + Comm + Fixed_Grid_or_Avg_Var) * Tax
+            if st.query_params.get("grid_type") == "Fixed":
+                proxy_grid = grid_fee_p1 # Which is fixed value
+            else:
+                proxy_grid = grid_fee_p2 # Use Standard/Llano as daily average proxy
+                
+            hist_df['Display_Price'] = ((hist_df['Raw_Price_MWh'] / 1000) + comm_input + proxy_grid) * (1 + tax_value)
 
         st.markdown(f"### {t['hist_title']}")
         st.caption(t['hist_avg_note'])
