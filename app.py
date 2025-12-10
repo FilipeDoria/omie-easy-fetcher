@@ -20,20 +20,18 @@ def get_param(key, default_val, type_func):
         return default_val
 
 # Defaults
-default_lang_idx = get_param("lang_idx", 2, int) # Default Portuguese
+default_lang_idx = get_param("lang_idx", 2, int)
 default_vat = get_param("vat", 23.0, float)
-default_comm_fee = get_param("comm_fee", 0.025, float) # Commercial Operator Fee
-default_grid_type = get_param("grid_type", "Fixed", str) # Fixed or Variable
-default_grid_fixed = get_param("grid_fixed", 0.060, float) # Grid Access Fee (Fixed)
-# Variable Grid Defaults (Approximate examples)
-default_grid_p1 = get_param("grid_p1", 0.100, float) # Peak
-default_grid_p2 = get_param("grid_p2", 0.040, float) # Standard
-default_grid_p3 = get_param("grid_p3", 0.010, float) # Off-Peak
-
+default_comm_fee = get_param("comm_fee", 0.025, float)
+default_grid_type = get_param("grid_type", "Fixed", str)
+default_grid_fixed = get_param("grid_fixed", 0.060, float)
+default_grid_p1 = get_param("grid_p1", 0.100, float)
+default_grid_p2 = get_param("grid_p2", 0.040, float)
+default_grid_p3 = get_param("grid_p3", 0.010, float)
 default_show_fixed_comp = get_param("show_fixed_comp", False, lambda x: x.lower() == 'true')
 default_fixed_val = get_param("fixed_val", 0.120, float)
 
-# --- 🌍 TRANSLATION ENGINE ---
+# --- 🌍 TRANSLATION ENGINE (Updated) ---
 LANGUAGES = {
     "English": {
         "title": "⚡ Iberian Electricity Prices",
@@ -70,7 +68,10 @@ LANGUAGES = {
         "your_rate": "Your Fixed Rate",
         "tax_applied": "Tax Applied",
         "price_axis": "Price",
-        "hour_axis": "Hour",
+        "hour_axis": "Start Hour",
+        "interval_col": "Time Interval",
+        "price_col": "Price",
+        "base_col": "Base Market Price",
         "date_axis": "Date",
         "now_label": "NOW",
         "verdict_good": "✅ Great time to use energy!",
@@ -121,7 +122,10 @@ LANGUAGES = {
         "your_rate": "Tu Tarifa Fija",
         "tax_applied": "Impuesto Aplicado",
         "price_axis": "Precio",
-        "hour_axis": "Hora",
+        "hour_axis": "Hora Inicio",
+        "interval_col": "Intervalo Horario",
+        "price_col": "Precio",
+        "base_col": "Precio Base Mercado",
         "date_axis": "Fecha",
         "now_label": "AHORA",
         "verdict_good": "✅ ¡Buen momento!",
@@ -157,7 +161,7 @@ LANGUAGES = {
         "grid_p1_input": "Taxa Ponta (P1) (€/kWh)",
         "grid_p2_input": "Taxa Cheias (P2) (€/kWh)",
         "grid_p3_input": "Taxa Vazio (P3) (€/kWh)",
-        "calc_title": "⏱️ Planificador de Consumo",
+        "calc_title": "⏱️ Planejar Consumo",
         "calc_power": "Potência (W)",
         "calc_duration": "Duração (Horas)",
         "calc_cost": "Custo Estimado",
@@ -169,10 +173,13 @@ LANGUAGES = {
         "avg_price": "Preço Médio",
         "min_price": "Mínimo",
         "max_price": "Máximo",
-        "your_rate": "Sua Tarifa Fixa",
+        "your_rate": "Sua Taxa Fixa",
         "tax_applied": "Imposto Aplicado",
         "price_axis": "Preço",
-        "hour_axis": "Hora",
+        "hour_axis": "Hora Início",
+        "interval_col": "Intervalo Horário",
+        "price_col": "Preço",
+        "base_col": "Preço Base Mercado",
         "date_axis": "Data",
         "now_label": "AGORA",
         "verdict_good": "✅ Bom momento!",
@@ -190,28 +197,28 @@ LANGUAGES = {
     }
 }
 
-# --- Helper: Get Period Key (P1, P2, P3) ---
-def get_period_key(hour, is_weekend):
-    """Returns the period key (P3=Valle, P2=Llano, P1=Punta) for calculation."""
+# --- Function to determine Tariff Period ---
+def get_tariff_period(hour, is_weekend, texts):
     if is_weekend:
-        return "P3"
+        return texts["zone_valle"], "rgba(0, 0, 255, 0.1)"
     if 0 <= hour < 8:
-        return "P3"
+        return texts["zone_valle"], "rgba(0, 0, 255, 0.1)"
     elif (8 <= hour < 10) or (14 <= hour < 18) or (22 <= hour < 24):
-        return "P2"
+        return texts["zone_llano"], "rgba(255, 255, 0, 0.1)"
     else:
-        return "P1"
+        return texts["zone_punta"], "rgba(255, 0, 0, 0.1)"
 
-# --- Helper: Get Display Text & Color ---
+def get_period_key(hour, is_weekend):
+    if is_weekend: return "P3"
+    if 0 <= hour < 8: return "P3"
+    elif (8 <= hour < 10) or (14 <= hour < 18) or (22 <= hour < 24): return "P2"
+    else: return "P1"
+
 def get_tariff_period_display(hour, is_weekend, texts):
-    """Returns the period name and color for the chart."""
     key = get_period_key(hour, is_weekend)
-    if key == "P3":
-        return texts["zone_valle"], "rgba(0, 0, 255, 0.1)" # Blue
-    elif key == "P2":
-        return texts["zone_llano"], "rgba(255, 255, 0, 0.1)" # Yellow
-    else:
-        return texts["zone_punta"], "rgba(255, 0, 0, 0.1)" # Red
+    if key == "P3": return texts["zone_valle"], "rgba(0, 0, 255, 0.1)"
+    elif key == "P2": return texts["zone_llano"], "rgba(255, 255, 0, 0.1)"
+    else: return texts["zone_punta"], "rgba(255, 0, 0, 0.1)"
 
 # --- Sidebar: Settings ---
 with st.sidebar:
@@ -235,20 +242,15 @@ with st.sidebar:
         
         st.divider()
         st.subheader(t["taxes"])
-        
-        # 1. Taxes
         tax_input = st.number_input(t["vat"], value=default_vat, step=1.0)
         st.query_params["vat"] = tax_input
         tax_value = tax_input / 100
         
-        # 2. Commercial Fee
         comm_input = st.number_input(t["comm_fee_label"], value=default_comm_fee, step=0.001, format="%.3f")
         st.query_params["comm_fee"] = comm_input
         
-        # 3. Grid Fees Selector
         st.markdown(f"**{t['grid_fee_label']}**")
         grid_options = [t["grid_type_fixed"], t["grid_type_var"]]
-        # Restore previous selection logic if possible, else default Fixed
         grid_type_idx = 0 if default_grid_type == "Fixed" else 1
         grid_type_sel = st.radio("Type", grid_options, index=grid_type_idx, horizontal=True, label_visibility="collapsed")
         
@@ -258,23 +260,21 @@ with st.sidebar:
             st.query_params["grid_type"] = "Fixed"
             grid_fixed_val = st.number_input(t["grid_fixed_input"], value=default_grid_fixed, step=0.001, format="%.3f")
             st.query_params["grid_fixed"] = grid_fixed_val
-            # Apply same fee to all periods
             grid_fee_p1 = grid_fee_p2 = grid_fee_p3 = grid_fixed_val
         else:
             st.query_params["grid_type"] = "Variable"
             c1, c2, c3 = st.columns(3)
             with c1:
-                grid_fee_p1 = st.number_input("Punta (P1)", value=default_grid_p1, step=0.001, format="%.3f", help=t["grid_p1_input"])
+                grid_fee_p1 = st.number_input("P1", value=default_grid_p1, step=0.001, format="%.3f", help=t["grid_p1_input"])
             with c2:
-                grid_fee_p2 = st.number_input("Cheias (P2)", value=default_grid_p2, step=0.001, format="%.3f", help=t["grid_p2_input"])
+                grid_fee_p2 = st.number_input("P2", value=default_grid_p2, step=0.001, format="%.3f", help=t["grid_p2_input"])
             with c3:
-                grid_fee_p3 = st.number_input("Vazio (P3)", value=default_grid_p3, step=0.001, format="%.3f", help=t["grid_p3_input"])
+                grid_fee_p3 = st.number_input("P3", value=default_grid_p3, step=0.001, format="%.3f", help=t["grid_p3_input"])
             
             st.query_params["grid_p1"] = grid_fee_p1
             st.query_params["grid_p2"] = grid_fee_p2
             st.query_params["grid_p3"] = grid_fee_p3
 
-        # Fixed Price Final Calc
         if show_fixed:
             fixed_price_final = fixed_val_input * (1 + tax_value)
             
@@ -305,7 +305,11 @@ def get_daily_prices(selected_date, country_code):
             'Raw_Price_MWh': data['price']
         })
         df = df.set_index('Timestamp').resample('1h').mean().reset_index()
-        df['Hour_Display'] = df['Timestamp'].dt.strftime('%H:00')
+        # Create clear Interval String (e.g., 14:00 - 15:00)
+        df['Hour_Start'] = df['Timestamp'].dt.strftime('%H:00')
+        df['Hour_End'] = (df['Timestamp'] + pd.Timedelta(hours=1)).dt.strftime('%H:00')
+        df['Hour_Range'] = df['Hour_Start'] + " - " + df['Hour_End']
+        
         df['Hour_Int'] = df['Timestamp'].dt.hour
         return df, target_tz
     except: return None, None
@@ -361,32 +365,26 @@ with tab1:
         if show_raw:
             df['Display_Price'] = df['Raw_Price_MWh']
             unit_label, chart_colors = "€/MWh", "RdYlGn_r"
-            fmt_str = "{:.3f} €"
+            fmt_str = "{:.2f} €" # Rounded to 2 decimals
             title_label = "MWh"
         else:
             unit_label = "€/kWh"
-            fmt_str = "{:.3f} €"
+            fmt_str = "{:.2f} €" # Rounded to 2 decimals
             title_label = "PVPC"
             chart_colors = "RdYlGn_r"
             
-            # --- APPLY VARIABLE GRID FEES ---
-            # 1. Determine period for each row
             is_weekend = day_select.weekday() >= 5
-            
             def apply_grid_fee(row):
                 p_key = get_period_key(row['Hour_Int'], is_weekend)
                 if p_key == "P1": return grid_fee_p1
                 if p_key == "P2": return grid_fee_p2
-                return grid_fee_p3 # P3
+                return grid_fee_p3
 
             df['Grid_Fee_Applied'] = df.apply(apply_grid_fee, axis=1)
-            
-            # 2. Formula: (Market/1000 + CommFee + GridFee) * (1 + Tax)
-            df['Display_Price'] = (
-                (df['Raw_Price_MWh'] / 1000) + comm_input + df['Grid_Fee_Applied']
-            ) * (1 + tax_value)
+            # Core Formula
+            df['Display_Price'] = ((df['Raw_Price_MWh'] / 1000) + comm_input + df['Grid_Fee_Applied']) * (1 + tax_value)
 
-        # --- LIVE STATUS ---
+        # --- LIVE STATUS (Always visible now) ---
         if day_select == date.today():
             now_local = datetime.now(pytz.timezone(current_tz))
             curr_row = df.loc[df['Hour_Int'] == now_local.hour]
@@ -401,12 +399,12 @@ with tab1:
                     else:
                         v_txt, v_col = t["verdict_fixed_loss"], "red"
                         delta_val = cp - fixed_price_final
-                    delta_text = f"{delta_val:.3f} vs Fixed"
+                    delta_text = f"{delta_val:.2f} vs Fixed"
                 else:
                     if cp < avg * 0.9: v_txt, v_col = t["verdict_good"], "green"
                     elif cp > avg * 1.1: v_txt, v_col = t["verdict_bad"], "red"
                     else: v_txt, v_col = t["verdict_avg"], "orange"
-                    delta_text = f"{cp - avg:.3f} vs Avg"
+                    delta_text = f"{cp - avg:.2f} vs Avg"
 
                 st.markdown(f"### {t['now_label']} ({now_local.strftime('%H:%M')})")
                 c1, c2 = st.columns([1, 2])
@@ -417,43 +415,45 @@ with tab1:
         avg_price = df['Display_Price'].mean()
         min_price = df['Display_Price'].min()
         max_price = df['Display_Price'].max()
-        best_h = df.loc[df['Display_Price'] == min_price, 'Hour_Display'].iloc[0]
+        best_h_idx = df['Display_Price'].idxmin()
+        best_h_range = df.loc[best_h_idx, 'Hour_Range']
 
         st.markdown(f"### 📊 {t['daily_summary']} ({unit_label})")
         m1, m2, m3 = st.columns(3)
         m1.metric(t["avg_price"], fmt_str.format(avg_price))
-        m2.metric(t["min_price"], fmt_str.format(min_price), f"at {best_h}", delta_color="inverse")
+        m2.metric(t["min_price"], fmt_str.format(min_price), f"at {best_h_range}", delta_color="inverse")
         m3.metric(t["max_price"], fmt_str.format(max_price), delta_color="normal")
 
         st.markdown("---")
+        
+        # --- CHART SETUP ---
         fig = px.bar(
             df, 
-            x="Hour_Display", 
+            x="Hour_Start", # Simple X-Axis Label
             y="Display_Price", 
             color="Display_Price", 
             color_continuous_scale=chart_colors, 
             title=f"{title_label} - {day_select}", 
-            labels={"Display_Price": f"{t['price_axis']} ({unit_label})", "Hour_Display": t['hour_axis']}
+            labels={"Display_Price": f"{t['price_axis']} ({unit_label})", "Hour_Start": t['hour_axis']},
+            # Add Custom Data for Tooltip: [Interval, Raw MWh Price]
+            custom_data=['Hour_Range', 'Raw_Price_MWh']
         )
         
-        if not show_raw and show_fixed:
-            fig.add_hline(
-                y=fixed_price_final, 
-                line_dash="dash", 
-                line_color="#2E86C1", 
-                line_width=3,
-                annotation_text=f"{t['your_rate']} ({fixed_price_final:.3f} €)", 
-                annotation_position="top left"
-            )
+        # Tooltip Logic
+        if show_raw:
+             fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Price: %{y:.2f} €/MWh")
+        else:
+             # Show Final Price AND Raw Market Price for context
+             fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Final: <b>%{y:.2f} €/kWh</b><br>Market Base: %{customdata[1]:.2f} €/MWh")
 
-        fig.update_traces(hovertemplate=f"{t['hour_axis']}: %{{x}}<br>{t['price_axis']}: %{{y:.3f}} {unit_label}")
+        if not show_raw and show_fixed:
+            fig.add_hline(y=fixed_price_final, line_dash="dash", line_color="#2E86C1", line_width=3, annotation_text=f"{t['your_rate']} ({fixed_price_final:.2f})")
 
         if not show_raw:
             is_weekend = day_select.weekday() >= 5
             for i in range(24):
                 p_name, bg_col = get_tariff_period_display(i, is_weekend, t)
                 fig.add_shape(type="rect", x0=i-0.5, x1=i+0.5, y0=0, y1=1, xref="x", yref="paper", fillcolor=bg_col, line_width=0, layer="below")
-            
             if not is_weekend:
                 fig.add_annotation(x=3, y=1.07, text=f"🟦 {t['zone_valle']}", showarrow=False, xref="x", yref="paper", font=dict(color="blue", size=10))
                 fig.add_annotation(x=10, y=1.07, text=f"🟨 {t['zone_llano']}", showarrow=False, xref="x", yref="paper", font=dict(color="#b5b500", size=10))
@@ -465,7 +465,7 @@ with tab1:
             now_str = datetime.now(pytz.timezone(current_tz)).strftime('%H:00')
             fig.add_vline(x=now_str, line_width=2, line_dash="dash", line_color="black")
 
-        fig.update_layout(xaxis=dict(fixedrange=True, title=None), yaxis=dict(fixedrange=True, title=None), coloraxis_showscale=False, hovermode="x unified", margin=dict(l=10, r=10, t=50, b=10))
+        fig.update_layout(xaxis=dict(fixedrange=True, title=t['hour_axis']), yaxis=dict(fixedrange=True, title=None), coloraxis_showscale=False, hovermode="x unified", margin=dict(l=10, r=10, t=50, b=10))
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
         if show_calculator and not show_raw:
@@ -477,11 +477,20 @@ with tab1:
             if not df['Roll'].dropna().empty:
                 cost = (ap/1000)*dh*df['Roll'].min()
                 with c3:
-                    st.success(f"**{t['calc_start']}** {df.loc[df['Roll'].idxmin(), 'Hour_Display']}")
+                    best_idx = df['Roll'].idxmin()
+                    # Show start time range
+                    st.success(f"**{t['calc_start']}** {df.loc[best_idx, 'Hour_Range']}")
                     st.metric(t["calc_cost"], fmt_str.format(cost))
 
         with st.expander(t["view_table"]):
-            st.dataframe(df[['Hour_Display', 'Display_Price']].style.format({"Display_Price": fmt_str}), use_container_width=True)
+            # Create a clean view dataframe
+            view_df = df[['Hour_Range', 'Display_Price']].copy()
+            view_df.columns = [t['interval_col'], f"{t['price_col']} ({unit_label})"]
+            if not show_raw:
+                view_df[f"{t['base_col']} (€/MWh)"] = df['Raw_Price_MWh']
+            
+            # Format numbers safely
+            st.dataframe(view_df.style.format(precision=2), use_container_width=True, hide_index=True)
     else:
         st.error(f"{t['data_unavailable']} {day_select}.")
 
@@ -492,27 +501,20 @@ with tab2:
         if show_raw:
             hist_df['Display_Price'] = hist_df['Raw_Price_MWh']
             h_unit = "€/MWh"
-            fmt_hist = "{:.3f} €"
+            fmt_hist = "{:.2f} €"
         else:
             h_unit = "€/kWh"
-            fmt_hist = "{:.3f} €"
-            # NOTE: History is approximate (uses average Grid Fee for simplicity or defaults)
-            # Since history is Daily Avg, we cannot easily apply hourly variable fees.
-            # We will use the 'Standard' (P2) fee as a proxy or just the Fixed fee if selected.
-            
-            # Simple Proxy: (Market + Comm + Fixed_Grid_or_Avg_Var) * Tax
-            if st.query_params.get("grid_type") == "Fixed":
-                proxy_grid = grid_fee_p1 # Which is fixed value
-            else:
-                proxy_grid = grid_fee_p2 # Use Standard/Llano as daily average proxy
-                
+            fmt_hist = "{:.2f} €"
+            # Approx History Calculation
+            if st.query_params.get("grid_type") == "Fixed": proxy_grid = default_grid_fixed
+            else: proxy_grid = default_grid_p2 
             hist_df['Display_Price'] = ((hist_df['Raw_Price_MWh'] / 1000) + comm_input + proxy_grid) * (1 + tax_value)
 
         st.markdown(f"### {t['hist_title']}")
         st.caption(t['hist_avg_note'])
         
         fig_h = px.line(hist_df, x="Date", y="Display_Price", markers=True, title=f"Average {h_unit}", labels={"Display_Price": t['price_axis'], "Date": t['date_axis']})
-        fig_h.update_traces(hovertemplate=f"{t['date_axis']}: %{{x}}<br>{t['price_axis']}: %{{y:.3f}} {h_unit}")
+        fig_h.update_traces(hovertemplate=f"{t['date_axis']}: %{{x}}<br>{t['price_axis']}: %{{y:.2f}} {h_unit}")
         fig_h.update_layout(xaxis=dict(fixedrange=True), yaxis=dict(fixedrange=True), hovermode="x unified")
         st.plotly_chart(fig_h, use_container_width=True, config={'displayModeBar': False})
         
