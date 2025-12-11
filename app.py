@@ -74,6 +74,7 @@ LANGUAGES = {
         "tax_applied": "Tax Applied",
         "price_axis": "Price",
         "hour_axis": "Start Hour",
+        "date_axis": "Date",
         "interval_col": "Time Interval",
         "price_col": "Price",
         "base_col": "Base Market Price",
@@ -135,8 +136,10 @@ LANGUAGES = {
         "min_price": "Mínimo",
         "max_price": "Máximo",
         "your_rate": "Tu Tarifa Fija",
+        "tax_applied": "Impuesto Aplicado",
         "price_axis": "Precio",
         "hour_axis": "Hora Inicio",
+        "date_axis": "Fecha",
         "interval_col": "Intervalo Horario",
         "price_col": "Precio",
         "base_col": "Precio Base Mercado",
@@ -198,8 +201,10 @@ LANGUAGES = {
         "min_price": "Mínimo",
         "max_price": "Máximo",
         "your_rate": "Sua Taxa Fixa",
+        "tax_applied": "Imposto Aplicado",
         "price_axis": "Preço",
         "hour_axis": "Hora Início",
+        "date_axis": "Data",
         "interval_col": "Intervalo Horário",
         "price_col": "Preço",
         "base_col": "Preço Base Mercado",
@@ -310,7 +315,6 @@ def get_historical_prices(end_date, country_code, days=30):
 st.title("⚡ Iberian Electricity Prices")
 
 # --- CONSOLIDATED CONFIGURATION (Top Expander) ---
-# We initialize translation based on default first, then update after selection
 lang_options = ["English", "Español", "Português"]
 safe_idx = default_lang_idx if 0 <= default_lang_idx < 3 else 2
 
@@ -328,7 +332,7 @@ with st.expander(t_pre["config_title"], expanded=False):
         st.query_params["lang_idx"] = lang_options.index(lang_choice)
         
         show_raw = st.toggle(t["show_raw"], value=False, help=t["raw_info"])
-        # FIX: Define show_calculator here so it exists for later use
+        # Moved Calculator Toggle Here
         show_calculator = st.toggle(t["calc_title"], value=True)
 
     fixed_price_final = 0.0
@@ -368,7 +372,6 @@ with st.expander(t_pre["config_title"], expanded=False):
                 grid_fee_p1 = grid_fee_p2 = grid_fee_p3 = grid_fixed_val
             else:
                 st.query_params["grid_type"] = "Variable"
-                # Use sub-columns for the 3 variable inputs to save space
                 sc1, sc2, sc3 = st.columns(3)
                 with sc1:
                     grid_fee_p1 = st.number_input("P1", value=default_grid_p1, step=0.001, format="%.3f", help=t["grid_p1_input"])
@@ -469,13 +472,11 @@ with tab1:
         m2.metric(t["min_price"], fmt_str.format(min_price), f"at {best_h_range}", delta_color="inverse")
         m3.metric(t["max_price"], fmt_str.format(max_price), delta_color="normal")
 
-        # --- FORMULA EXPLAINER (Improved) ---
+        # --- FORMULA EXPLAINER ---
         if not show_raw:
             with st.expander(t["explain_title"]):
-                # Formula Visualization
                 st.latex(r"\text{" + t["price_axis"] + r"} = (\text{" + t["explain_market"] + r"} + \text{" + t["explain_comm"] + r"} + \text{" + t["explain_grid"] + r"}) \times (1 + \text{" + t["explain_tax"] + r"})")
                 
-                # Live Data Example
                 avg_mkt = df['Raw_Price_MWh'].mean() / 1000
                 avg_grid = df['Grid_Fee_Applied'].mean()
                 
@@ -501,7 +502,6 @@ with tab1:
             custom_data=['Hour_Range', 'Raw_Price_MWh']
         )
         
-        # Tooltips
         if show_raw:
              fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Price: <b>%{y:.2f} €/MWh</b><extra></extra>")
         else:
