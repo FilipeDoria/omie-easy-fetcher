@@ -40,14 +40,16 @@ LANGUAGES = {
         "tab_history": "📈 30-Day Trend",
         "select_date": "Select Date",
         "country": "Country",
-        "settings": "⚙️ Settings",
+        "settings": "Settings",
         "show_raw": "Show Raw Market Price (€/MWh)",
         "comp_toggle": "Compare with Fixed Rate",
         "fixed_input": "Your Fixed Energy Price (€/kWh)",
         "taxes": "Taxes & Fees",
         "vat": "VAT / IVA (%)",
         "comm_fee_label": "Commercial Margin (€/kWh)",
+        "comm_help": "Fee charged by your retailer to manage the contract. Usually 0.01 - 0.03 €.",
         "grid_fee_label": "Grid Access Fees",
+        "grid_help": "Cost to maintain cables and transport energy. Can be fixed or variable.",
         "grid_type_fixed": "Fixed",
         "grid_type_var": "Variable (Time-of-Use)",
         "grid_fixed_input": "Fixed Grid Fee (€/kWh)",
@@ -62,6 +64,7 @@ LANGUAGES = {
         "calc_cost": "Estimated Cost",
         "calc_start": "Best Start:",
         "view_table": "View Detailed Data Table",
+        "table_title": "📋 Hourly Data",
         "download_csv": "📥 Download Data as CSV",
         "daily_summary": "Daily Summary",
         "avg_price": "Average Price",
@@ -74,7 +77,6 @@ LANGUAGES = {
         "interval_col": "Time Interval",
         "price_col": "Price",
         "base_col": "Base Market Price",
-        "date_axis": "Date",
         "now_label": "NOW",
         "verdict_good": "✅ Great time to use energy!",
         "verdict_bad": "❌ Expensive! Wait if possible.",
@@ -88,11 +90,12 @@ LANGUAGES = {
         "raw_info": "Showing raw market data in €/MWh. Taxes and tariffs are hidden.",
         "hist_title": "Price Evolution (Last 30 Days)",
         "hist_avg_note": "Showing daily average prices.",
-        "comm_help": "Fee charged by your retailer to manage the contract. Usually 0.01 - 0.03 €.",
-        "grid_help": "Cost to maintain cables and transport energy. Can be fixed or variable.",
-        "explain_title": "📝 How is this calculated?",
-        "explain_formula": "Price = (Market + Fees) × Taxes",
-        "explain_detail": "Your final price is the raw energy cost plus commercial margins and grid tolls, multiplied by VAT."
+        "explain_title": "📝 Price Breakdown",
+        "explain_formula": "Calculation Formula",
+        "explain_market": "Market Price",
+        "explain_comm": "Comm. Margin",
+        "explain_grid": "Grid Fees",
+        "explain_tax": "VAT"
     },
     "Español": {
         "title": "⚡ Precio de la Luz (OMIE)",
@@ -101,14 +104,16 @@ LANGUAGES = {
         "tab_history": "📈 Tendencia 30 Días",
         "select_date": "Seleccionar Fecha",
         "country": "País",
-        "settings": "⚙️ Configuración",
+        "settings": "Configuración",
         "show_raw": "Ver Precio Mercado (€/MWh)",
         "comp_toggle": "Comparar con Tarifa Fija",
         "fixed_input": "Precio Energía Fijo (€/kWh)",
         "taxes": "Impuestos y Peajes",
         "vat": "IVA (%)",
         "comm_fee_label": "Margen Comercial (€/kWh)",
+        "comm_help": "Coste de gestión de la comercializadora. Suele ser 0.01 - 0.03 €.",
         "grid_fee_label": "Peajes de Acceso",
+        "grid_help": "Coste de redes y transporte. Puede ser fijo o variable.",
         "grid_type_fixed": "Fijo",
         "grid_type_var": "Variable (Horario)",
         "grid_fixed_input": "Peaje Fijo (€/kWh)",
@@ -123,19 +128,18 @@ LANGUAGES = {
         "calc_cost": "Coste Estimado",
         "calc_start": "Mejor Hora:",
         "view_table": "Ver Tabla de Datos",
+        "table_title": "📋 Datos Horarios",
         "download_csv": "📥 Descargar CSV",
         "daily_summary": "Resumen Diario",
         "avg_price": "Precio Medio",
         "min_price": "Mínimo",
         "max_price": "Máximo",
         "your_rate": "Tu Tarifa Fija",
-        "tax_applied": "Impuesto Aplicado",
         "price_axis": "Precio",
         "hour_axis": "Hora Inicio",
         "interval_col": "Intervalo Horario",
         "price_col": "Precio",
         "base_col": "Precio Base Mercado",
-        "date_axis": "Fecha",
         "now_label": "AHORA",
         "verdict_good": "✅ ¡Buen momento!",
         "verdict_bad": "❌ Caro. Espera si puedes.",
@@ -149,11 +153,12 @@ LANGUAGES = {
         "raw_info": "Mostrando datos crudos en €/MWh. Sin impuestos ni peajes.",
         "hist_title": "Evolución de Precios (Últimos 30 Días)",
         "hist_avg_note": "Mostrando precios medios diarios.",
-        "comm_help": "Coste de gestión de la comercializadora. Suele ser 0.01 - 0.03 €.",
-        "grid_help": "Coste de redes y transporte. Puede ser fijo o variable.",
-        "explain_title": "📝 ¿Cómo se calcula?",
-        "explain_formula": "Precio = (Mercado + Peajes) × Impuestos",
-        "explain_detail": "El precio final suma el coste de energía, margen comercial y peajes, multiplicado por el IVA."
+        "explain_title": "📝 Desglose del Precio",
+        "explain_formula": "Fórmula de Cálculo",
+        "explain_market": "Precio Mercado",
+        "explain_comm": "Margen Comer.",
+        "explain_grid": "Peajes",
+        "explain_tax": "IVA"
     },
     "Português": {
         "title": "⚡ Preço da Eletricidade (OMIE)",
@@ -162,14 +167,16 @@ LANGUAGES = {
         "tab_history": "📈 Tendência 30 Dias",
         "select_date": "Selecionar Data",
         "country": "País",
-        "settings": "⚙️ Configurações",
+        "settings": "Configurações",
         "show_raw": "Ver Preço de Mercado (€/MWh)",
         "comp_toggle": "Comparar com Taxa Fixa",
         "fixed_input": "Seu Preço Fixo (€/kWh)",
         "taxes": "Impostos e Taxas",
         "vat": "IVA (%)",
         "comm_fee_label": "Margem Comercial (€/kWh)",
+        "comm_help": "Custo de gestão do comercializador. Geralmente 0.01 - 0.03 €.",
         "grid_fee_label": "Tarifas de Acesso às Redes",
+        "grid_help": "Custo de transporte e manutenção da rede. Pode ser fixo ou variável.",
         "grid_type_fixed": "Fixo",
         "grid_type_var": "Variável (Horário)",
         "grid_fixed_input": "Acesso Fixo (€/kWh)",
@@ -184,19 +191,18 @@ LANGUAGES = {
         "calc_cost": "Custo Estimado",
         "calc_start": "Melhor Início:",
         "view_table": "Ver Tabela de Dados",
+        "table_title": "📋 Dados Horários",
         "download_csv": "📥 Baixar CSV",
         "daily_summary": "Resumo Diário",
         "avg_price": "Preço Médio",
         "min_price": "Mínimo",
         "max_price": "Máximo",
         "your_rate": "Sua Taxa Fixa",
-        "tax_applied": "Imposto Aplicado",
         "price_axis": "Preço",
         "hour_axis": "Hora Início",
         "interval_col": "Intervalo Horário",
         "price_col": "Preço",
         "base_col": "Preço Base Mercado",
-        "date_axis": "Data",
         "now_label": "AGORA",
         "verdict_good": "✅ Bom momento!",
         "verdict_bad": "❌ Caro. Espere se puder.",
@@ -210,11 +216,12 @@ LANGUAGES = {
         "raw_info": "Mostrando dados brutos em €/MWh. Sem impostos ou taxas.",
         "hist_title": "Evolução de Preços (Últimos 30 Dias)",
         "hist_avg_note": "Mostrando preços médios diários.",
-        "comm_help": "Custo de gestão do comercializador. Geralmente 0.01 - 0.03 €.",
-        "grid_help": "Custo de transporte e manutenção da rede. Pode ser fixo ou variável.",
-        "explain_title": "📝 Como é calculado?",
-        "explain_formula": "Preço = (Mercado + Taxas) × Impostos",
-        "explain_detail": "O preço final soma o custo da energia, a margem comercial e as tarifas de acesso, multiplicado pelo IVA."
+        "explain_title": "📝 Composição do Preço",
+        "explain_formula": "Fórmula de Cálculo",
+        "explain_market": "Preço Mercado",
+        "explain_comm": "Margem Comer.",
+        "explain_grid": "Tarifas Rede",
+        "explain_tax": "IVA"
     }
 }
 
@@ -248,56 +255,6 @@ def get_tariff_period_display(hour, is_weekend, texts):
     if key == "P3": return texts["zone_valle"], "rgba(0, 0, 255, 0.1)"
     elif key == "P2": return texts["zone_llano"], "rgba(255, 255, 0, 0.1)"
     else: return texts["zone_punta"], "rgba(255, 0, 0, 0.1)"
-
-# --- Sidebar: Settings ---
-with st.sidebar:
-    lang_options = ["English", "Español", "Português"]
-    safe_idx = default_lang_idx if 0 <= default_lang_idx < 3 else 2
-    lang_choice = st.selectbox("Language / Idioma", lang_options, index=safe_idx)
-    t = LANGUAGES[lang_choice]
-    st.query_params["lang_idx"] = lang_options.index(lang_choice)
-    
-    st.header(t["settings"])
-    
-    # Advanced Taxes & Fees
-    st.subheader(t["taxes"])
-    tax_input = st.number_input(t["vat"], value=default_vat, step=1.0)
-    st.query_params["vat"] = tax_input
-    tax_value = tax_input / 100
-    
-    comm_input = st.number_input(t["comm_fee_label"], value=default_comm_fee, step=0.001, format="%.3f", help=t["comm_help"])
-    st.query_params["comm_fee"] = comm_input
-    
-    st.markdown(f"**{t['grid_fee_label']}**", help=t["grid_help"])
-    grid_options = [t["grid_type_fixed"], t["grid_type_var"]]
-    grid_type_idx = 0 if default_grid_type == "Fixed" else 1
-    grid_type_sel = st.radio("Type", grid_options, index=grid_type_idx, horizontal=True, label_visibility="collapsed")
-    
-    grid_fee_p1, grid_fee_p2, grid_fee_p3 = 0.0, 0.0, 0.0
-    
-    if grid_type_sel == t["grid_type_fixed"]:
-        st.query_params["grid_type"] = "Fixed"
-        grid_fixed_val = st.number_input(t["grid_fixed_input"], value=default_grid_fixed, step=0.001, format="%.3f")
-        st.query_params["grid_fixed"] = grid_fixed_val
-        grid_fee_p1 = grid_fee_p2 = grid_fee_p3 = grid_fixed_val
-    else:
-        st.query_params["grid_type"] = "Variable"
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            grid_fee_p1 = st.number_input("P1", value=default_grid_p1, step=0.001, format="%.3f", help=t["grid_p1_input"])
-        with c2:
-            grid_fee_p2 = st.number_input("P2", value=default_grid_p2, step=0.001, format="%.3f", help=t["grid_p2_input"])
-        with c3:
-            grid_fee_p3 = st.number_input("P3", value=default_grid_p3, step=0.001, format="%.3f", help=t["grid_p3_input"])
-        
-        st.query_params["grid_p1"] = grid_fee_p1
-        st.query_params["grid_p2"] = grid_fee_p2
-        st.query_params["grid_p3"] = grid_fee_p3
-
-    st.divider()
-    show_calculator = st.checkbox(t["calc_title"], value=True) # Default calc to ON
-    st.markdown("---")
-    st.caption("Created with **Streamlit** & **Energy-Charts API**")
 
 # --- DATA FUNCTIONS ---
 @st.cache_data(ttl=3600)
@@ -349,24 +306,80 @@ def get_historical_prices(end_date, country_code, days=30):
         return daily_avg
     except: return None
 
-# --- MAIN APP ---
-st.title(t["title"])
+# --- MAIN APP START ---
+st.title("⚡ Iberian Electricity Prices")
 
-# --- TOP CONFIG EXPANDER (Improved Visibility) ---
-with st.expander(t["config_title"], expanded=False):
-    c_cfg1, c_cfg2 = st.columns(2)
-    with c_cfg1:
-        show_raw = st.toggle(t["show_raw"], value=False, help=t["raw_info"])
+# --- CONSOLIDATED CONFIGURATION (Top Expander) ---
+# We initialize translation based on default first, then update after selection
+lang_options = ["English", "Español", "Português"]
+safe_idx = default_lang_idx if 0 <= default_lang_idx < 3 else 2
+
+# We need to load 't' before the expander to get the title
+t_pre = LANGUAGES[lang_options[safe_idx]]
+
+with st.expander(t_pre["config_title"], expanded=False):
+    # Column Layout for Settings
+    col_set1, col_set2, col_set3 = st.columns([1, 1, 1])
     
+    with col_set1:
+        st.markdown("##### 🌍 Region")
+        lang_choice = st.selectbox("Language / Idioma", lang_options, index=safe_idx)
+        t = LANGUAGES[lang_choice] # Update translation immediately
+        st.query_params["lang_idx"] = lang_options.index(lang_choice)
+        
+        show_raw = st.toggle(t["show_raw"], value=False, help=t["raw_info"])
+
     fixed_price_final = 0.0
+    access_fee = 0.0
+    
+    # Logic: If Raw is OFF, show Tariff & Tax settings
     if not show_raw:
-        with c_cfg2:
+        with col_set2:
+            st.markdown("##### 🧾 Tariff")
             show_fixed = st.toggle(t["comp_toggle"], value=default_show_fixed_comp)
             st.query_params["show_fixed_comp"] = str(show_fixed)
-        
+            
+            if show_fixed:
+                fixed_val_input = st.number_input(t["fixed_input"], value=default_fixed_val, step=0.001, format="%.3f")
+                st.query_params["fixed_val"] = fixed_val_input
+                
+            comm_input = st.number_input(t["comm_fee_label"], value=default_comm_fee, step=0.001, format="%.3f", help=t["comm_help"])
+            st.query_params["comm_fee"] = comm_input
+
+        with col_set3:
+            st.markdown(f"##### 🏛️ {t['taxes']}")
+            tax_input = st.number_input(t["vat"], value=default_vat, step=1.0)
+            st.query_params["vat"] = tax_input
+            tax_value = tax_input / 100
+            
+            st.markdown(f"**{t['grid_fee_label']}**", help=t["grid_help"])
+            grid_options = [t["grid_type_fixed"], t["grid_type_var"]]
+            grid_type_idx = 0 if default_grid_type == "Fixed" else 1
+            grid_type_sel = st.radio("Grid Type", grid_options, index=grid_type_idx, horizontal=True, label_visibility="collapsed")
+            
+            grid_fee_p1, grid_fee_p2, grid_fee_p3 = 0.0, 0.0, 0.0
+            
+            if grid_type_sel == t["grid_type_fixed"]:
+                st.query_params["grid_type"] = "Fixed"
+                grid_fixed_val = st.number_input(t["grid_fixed_input"], value=default_grid_fixed, step=0.001, format="%.3f")
+                st.query_params["grid_fixed"] = grid_fixed_val
+                grid_fee_p1 = grid_fee_p2 = grid_fee_p3 = grid_fixed_val
+            else:
+                st.query_params["grid_type"] = "Variable"
+                # Use sub-columns for the 3 variable inputs to save space
+                sc1, sc2, sc3 = st.columns(3)
+                with sc1:
+                    grid_fee_p1 = st.number_input("P1", value=default_grid_p1, step=0.001, format="%.3f", help=t["grid_p1_input"])
+                with sc2:
+                    grid_fee_p2 = st.number_input("P2", value=default_grid_p2, step=0.001, format="%.3f", help=t["grid_p2_input"])
+                with sc3:
+                    grid_fee_p3 = st.number_input("P3", value=default_grid_p3, step=0.001, format="%.3f", help=t["grid_p3_input"])
+                
+                st.query_params["grid_p1"] = grid_fee_p1
+                st.query_params["grid_p2"] = grid_fee_p2
+                st.query_params["grid_p3"] = grid_fee_p3
+
         if show_fixed:
-            fixed_val_input = st.number_input(t["fixed_input"], value=default_fixed_val, step=0.001, format="%.3f")
-            st.query_params["fixed_val"] = fixed_val_input
             fixed_price_final = fixed_val_input * (1 + tax_value)
 
 # Date Blocker
@@ -376,6 +389,7 @@ if now_cet.hour > 13 or (now_cet.hour == 13 and now_cet.minute >= 30):
 else:
     max_allowed = now_cet.date()
 
+# --- MAIN CONTROLS (Date & Country) ---
 col1, col2 = st.columns(2)
 with col1:
     day_select = st.date_input(t["select_date"], date.today(), max_value=max_allowed)
@@ -453,14 +467,23 @@ with tab1:
         m2.metric(t["min_price"], fmt_str.format(min_price), f"at {best_h_range}", delta_color="inverse")
         m3.metric(t["max_price"], fmt_str.format(max_price), delta_color="normal")
 
-        # --- FORMULA EXPLAINER (Restored) ---
+        # --- FORMULA EXPLAINER (Improved) ---
         if not show_raw:
             with st.expander(t["explain_title"]):
-                st.markdown(f"**{t['explain_formula']}**")
-                st.caption(t["explain_detail"])
+                # Formula Visualization
+                st.latex(r"\text{" + t["price_axis"] + r"} = (\text{" + t["explain_market"] + r"} + \text{" + t["explain_comm"] + r"} + \text{" + t["explain_grid"] + r"}) \times (1 + \text{" + t["explain_tax"] + r"})")
+                
+                # Live Data Example
                 avg_mkt = df['Raw_Price_MWh'].mean() / 1000
                 avg_grid = df['Grid_Fee_Applied'].mean()
-                st.code(f"{avg_price:.3f}€ = ({avg_mkt:.3f} + {comm_input:.3f} + {avg_grid:.3f}) × {1+tax_value:.2f}")
+                
+                c_ex1, c_ex2, c_ex3, c_ex4 = st.columns(4)
+                c_ex1.metric(t["explain_market"], f"{avg_mkt:.3f} €")
+                c_ex2.metric(f"+ {t['explain_comm']}", f"{comm_input:.3f} €")
+                c_ex3.metric(f"+ {t['explain_grid']} (Avg)", f"{avg_grid:.3f} €")
+                c_ex4.metric(f"x {t['explain_tax']}", f"{int(tax_value*100)}%")
+                
+                st.info(f"**Total Avg:** {avg_price:.3f} €/kWh")
 
         st.markdown("---")
         
@@ -476,9 +499,8 @@ with tab1:
             custom_data=['Hour_Range', 'Raw_Price_MWh']
         )
         
-        # FIXED TOOLTIP: Remove implicit X-axis header to stop duplication
+        # Tooltips
         if show_raw:
-             # <extra></extra> removes the secondary box (trace info)
              fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Price: <b>%{y:.2f} €/MWh</b><extra></extra>")
         else:
              fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Final: <b>%{y:.2f} €/kWh</b><br>Market Base: %{customdata[1]:.2f} €/MWh<extra></extra>")
@@ -506,12 +528,11 @@ with tab1:
         fig.update_layout(xaxis=dict(fixedrange=True, title=t['hour_axis']), yaxis=dict(fixedrange=True, title=None), coloraxis_showscale=False, hovermode="x unified", margin=dict(l=10, r=10, t=50, b=10))
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-        # --- CALCULATOR WITH APPLIANCE PRESETS ---
+        # --- CALCULATOR ---
         if show_calculator and not show_raw:
             st.markdown(f"### {t['calc_title']}")
             c1, c2, c3 = st.columns(3)
             with c1: 
-                # Appliance Selector
                 app_list = list(APPLIANCES.keys())
                 selected_app = st.selectbox(t["calc_appliance"], app_list, index=0)
                 preset_power = APPLIANCES[selected_app]
@@ -531,6 +552,8 @@ with tab1:
                     st.success(f"**{t['calc_start']}** {df.loc[best_idx, 'Hour_Range']}")
                     st.metric(t["calc_cost"], fmt_str.format(cost))
 
+        # --- DATA TABLE ---
+        st.markdown(f"### {t['table_title']}")
         with st.expander(t["view_table"]):
             view_df = df[['Hour_Range', 'Display_Price']].copy()
             view_df.columns = [t['interval_col'], f"{t['price_col']} ({unit_label})"]
@@ -559,7 +582,6 @@ with tab2:
         st.caption(t['hist_avg_note'])
         
         fig_h = px.line(hist_df, x="Date", y="Display_Price", markers=True, title=f"Average {h_unit}", labels={"Display_Price": t['price_axis'], "Date": t['date_axis']})
-        # FIXED TOOLTIP for History
         fig_h.update_traces(hovertemplate="<b>%{x}</b><br>Price: <b>%{y:.2f} " + h_unit + "</b><extra></extra>")
         fig_h.update_layout(xaxis=dict(fixedrange=True), yaxis=dict(fixedrange=True), hovermode="x unified")
         st.plotly_chart(fig_h, use_container_width=True, config={'displayModeBar': False})
