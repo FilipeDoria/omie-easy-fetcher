@@ -328,6 +328,8 @@ with st.expander(t_pre["config_title"], expanded=False):
         st.query_params["lang_idx"] = lang_options.index(lang_choice)
         
         show_raw = st.toggle(t["show_raw"], value=False, help=t["raw_info"])
+        # FIX: Define show_calculator here so it exists for later use
+        show_calculator = st.toggle(t["calc_title"], value=True)
 
     fixed_price_final = 0.0
     access_fee = 0.0
