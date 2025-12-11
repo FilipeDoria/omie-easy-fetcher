@@ -94,12 +94,11 @@ LANGUAGES = {
         "hist_title": "Price Evolution (Last 30 Days)",
         "hist_avg_note": "Showing daily average prices.",
         "explain_title": "📝 Price Breakdown",
-        "explain_formula": "Price = ((Market × (1 + Losses)) + Fees) × Taxes",
-        "explain_market": "Market Price",
-        "explain_losses": "Losses",
-        "explain_comm": "Comm. Margin",
-        "explain_grid": "Grid Fees",
-        "explain_tax": "VAT"
+        "step_market": "1. Market Price",
+        "step_losses": "2. Add Losses",
+        "step_comm": "3. Add Margin + Grid",
+        "step_tax": "4. Add VAT",
+        "step_final": "Final Price"
     },
     "Español": {
         "title": "⚡ Precio de la Luz (OMIE)",
@@ -161,12 +160,11 @@ LANGUAGES = {
         "hist_title": "Evolución de Precios (Últimos 30 Días)",
         "hist_avg_note": "Mostrando precios medios diarios.",
         "explain_title": "📝 Desglose del Precio",
-        "explain_formula": "Precio = ((Mercado × (1 + Pérdidas)) + Peajes) × Impuestos",
-        "explain_market": "Precio Mercado",
-        "explain_losses": "Pérdidas",
-        "explain_comm": "Margen Comer.",
-        "explain_grid": "Peajes",
-        "explain_tax": "IVA"
+        "step_market": "1. Precio Mercado",
+        "step_losses": "2. Añadir Pérdidas",
+        "step_comm": "3. Añadir Margen + Peajes",
+        "step_tax": "4. Añadir IVA",
+        "step_final": "Precio Final"
     },
     "Português": {
         "title": "⚡ Preço da Eletricidade (OMIE)",
@@ -228,12 +226,11 @@ LANGUAGES = {
         "hist_title": "Evolução de Preços (Últimos 30 Dias)",
         "hist_avg_note": "Mostrando preços médios diários.",
         "explain_title": "📝 Composição do Preço",
-        "explain_formula": "Preço = ((Mercado × (1 + Perdas)) + Taxas) × Impostos",
-        "explain_market": "Preço Mercado",
-        "explain_losses": "Perdas/Desvio",
-        "explain_comm": "Margem Comer.",
-        "explain_grid": "Tarifas Rede",
-        "explain_tax": "IVA"
+        "step_market": "1. Preço Mercado",
+        "step_losses": "2. Somar Perdas",
+        "step_comm": "3. Somar Margem + Tarifas",
+        "step_tax": "4. Somar IVA",
+        "step_final": "Preço Final"
     }
 }
 
@@ -325,7 +322,6 @@ st.title("⚡ Iberian Electricity Prices")
 lang_options = ["English", "Español", "Português"]
 safe_idx = default_lang_idx if 0 <= default_lang_idx < 3 else 2
 
-# We need to load 't' before the expander to get the title
 t_pre = LANGUAGES[lang_options[safe_idx]]
 
 with st.expander(t_pre["config_title"], expanded=False):
@@ -335,18 +331,16 @@ with st.expander(t_pre["config_title"], expanded=False):
     with col_set1:
         st.markdown("##### 🌍 Region")
         lang_choice = st.selectbox("Language / Idioma", lang_options, index=safe_idx)
-        t = LANGUAGES[lang_choice] # Update translation immediately
+        t = LANGUAGES[lang_choice] 
         st.query_params["lang_idx"] = lang_options.index(lang_choice)
         
         show_raw = st.toggle(t["show_raw"], value=False, help=t["raw_info"])
-        # Calculator Toggle in Config
         show_calculator = st.toggle(t["calc_title"], value=True)
 
     fixed_price_final = 0.0
     access_fee = 0.0
     losses_val = 0.0
     
-    # Logic: If Raw is OFF, show Tariff & Tax settings
     if not show_raw:
         with col_set2:
             st.markdown("##### 🧾 Tariff")
@@ -357,7 +351,6 @@ with st.expander(t_pre["config_title"], expanded=False):
                 fixed_val_input = st.number_input(t["fixed_input"], value=default_fixed_val, step=0.001, format="%.3f")
                 st.query_params["fixed_val"] = fixed_val_input
             
-            # Commercial & Losses
             comm_input = st.number_input(t["comm_fee_label"], value=default_comm_fee, step=0.001, format="%.3f", help=t["comm_help"])
             st.query_params["comm_fee"] = comm_input
             
@@ -407,7 +400,6 @@ if now_cet.hour > 13 or (now_cet.hour == 13 and now_cet.minute >= 30):
 else:
     max_allowed = now_cet.date()
 
-# --- MAIN CONTROLS ---
 col1, col2 = st.columns(2)
 with col1:
     day_select = st.date_input(t["select_date"], date.today(), max_value=max_allowed)
@@ -443,7 +435,7 @@ with tab1:
                 return grid_fee_p3
 
             df['Grid_Fee_Applied'] = df.apply(apply_grid_fee, axis=1)
-            # Core Formula with Losses
+            # Core Formula
             df['Display_Price'] = (
                 ((df['Raw_Price_MWh'] / 1000) * (1 + losses_val)) 
                 + comm_input 
@@ -490,24 +482,31 @@ with tab1:
         m2.metric(t["min_price"], fmt_str.format(min_price), f"at {best_h_range}", delta_color="inverse")
         m3.metric(t["max_price"], fmt_str.format(max_price), delta_color="normal")
 
-        # --- FORMULA EXPLAINER (Mobile Friendly) ---
+        # --- FORMULA EXPLAINER (Mobile Friendly Vertical List) ---
         if not show_raw:
             with st.expander(t["explain_title"]):
-                # Split formula for mobile readability
-                st.latex(r"P_{total} = (P_{base} + \text{" + t["explain_grid"] + r"}) \times (1 + \text{" + t["explain_tax"] + r"})")
-                st.latex(r"P_{base} = (\text{" + t["explain_market"] + r"} \times (1 + \text{" + t["explain_losses"] + r"\%})) + \text{" + t["explain_comm"] + r"}")
-                
                 avg_mkt = df['Raw_Price_MWh'].mean() / 1000
                 avg_grid = df['Grid_Fee_Applied'].mean()
                 
-                c_ex1, c_ex2, c_ex3, c_ex4, c_ex5 = st.columns(5)
-                c_ex1.metric(t["explain_market"], f"{avg_mkt:.3f} €")
-                c_ex2.metric(f"+ {t['explain_losses']}", f"{losses_input}%")
-                c_ex3.metric(f"+ {t['explain_comm']}", f"{comm_input:.3f} €")
-                c_ex4.metric(f"+ {t['explain_grid']} (Avg)", f"{avg_grid:.3f} €")
-                c_ex5.metric(f"x {t['explain_tax']}", f"{int(tax_value*100)}%")
-                
-                st.info(f"**Total Avg:** {avg_price:.3f} €/kWh")
+                # Steps logic calculation
+                val_market = avg_mkt
+                val_losses = avg_mkt * losses_val
+                val_base = val_market + val_losses
+                val_fees = comm_input + avg_grid
+                val_subtotal = val_base + val_fees
+                val_final = val_subtotal * (1 + tax_value)
+
+                st.markdown(f"""
+                **{t['step_market']}:** {val_market:.3f} €
+                ⬇
+                **{t['step_losses']} (+{losses_input}%):** {val_losses:.3f} €
+                ⬇
+                **{t['step_comm']}:** {val_fees:.3f} €
+                ⬇
+                **{t['step_tax']} (+{int(tax_value*100)}%):**
+                ⬇
+                **{t['step_final']}:** :green[{val_final:.3f} €/kWh]
+                """)
 
         st.markdown("---")
         
@@ -523,7 +522,7 @@ with tab1:
             custom_data=['Hour_Range', 'Raw_Price_MWh']
         )
         
-        # FIXED TOOLTIPS (No redundancy)
+        # FIXED TOOLTIP: Clean, no duplicate hour header
         if show_raw:
              fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Price: <b>%{y:.2f} €/MWh</b><extra></extra>")
         else:
@@ -540,7 +539,7 @@ with tab1:
             
             if not is_weekend:
                 fig.add_annotation(x=3, y=1.07, text=f"🟦 {t['zone_valle']}", showarrow=False, xref="x", yref="paper", font=dict(color="blue", size=10))
-                fig.add_annotation(x=10, y=1.07, text=f"🟨 {t['zone_llano']}", showarrow=False, xref="x", yref="paper", font=dict(color="#b5b500", size=10))
+                fig.add_annotation(x=10, y=1.07, text=f"𝟨 {t['zone_llano']}", showarrow=False, xref="x", yref="paper", font=dict(color="#b5b500", size=10))
                 fig.add_annotation(x=17, y=1.07, text=f"🟥 {t['zone_punta']}", showarrow=False, xref="x", yref="paper", font=dict(color="red", size=10))
             else:
                 fig.add_annotation(x=12, y=1.07, text=f"🟦 {t['zone_valle']}", showarrow=False, xref="x", yref="paper", font=dict(color="blue", size=10))
@@ -550,7 +549,7 @@ with tab1:
             fig.add_vline(x=now_str, line_width=2, line_dash="dash", line_color="black")
 
         fig.update_layout(xaxis=dict(fixedrange=True, title=t['hour_axis']), yaxis=dict(fixedrange=True, title=None), coloraxis_showscale=False, hovermode="x unified", margin=dict(l=10, r=10, t=50, b=10))
-        st.plotly_chart(fig, width=None, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig, width="stretch", config={'displayModeBar': False})
 
         # --- CALCULATOR ---
         if show_calculator and not show_raw:
@@ -583,7 +582,7 @@ with tab1:
             view_df.columns = [t['interval_col'], f"{t['price_col']} ({unit_label})"]
             if not show_raw:
                 view_df[f"{t['base_col']} (€/MWh)"] = df['Raw_Price_MWh']
-            st.dataframe(view_df.style.format(precision=3), width=None, use_container_width=True, hide_index=True)
+            st.dataframe(view_df.style.format(precision=3), width="stretch", hide_index=True)
     else:
         st.error(f"{t['data_unavailable']} {day_select}.")
 
@@ -601,7 +600,6 @@ with tab2:
             if st.query_params.get("grid_type") == "Fixed": proxy_grid = default_grid_fixed
             else: proxy_grid = default_grid_p2 
             
-            # History with Losses
             hist_df['Display_Price'] = (
                 ((hist_df['Raw_Price_MWh'] / 1000) * (1 + losses_val)) 
                 + comm_input + proxy_grid
@@ -611,10 +609,10 @@ with tab2:
         st.caption(t['hist_avg_note'])
         
         fig_h = px.line(hist_df, x="Date", y="Display_Price", markers=True, title=f"Average {h_unit}", labels={"Display_Price": t['price_axis'], "Date": t['date_axis']})
-        # FIXED TOOLTIP for History (No redundant date)
+        # CLEAN TOOLTIP FOR HISTORY
         fig_h.update_traces(hovertemplate="Price: <b>%{y:.3f} " + h_unit + "</b><extra></extra>")
         fig_h.update_layout(xaxis=dict(fixedrange=True), yaxis=dict(fixedrange=True), hovermode="x unified")
-        st.plotly_chart(fig_h, width=None, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig_h, width="stretch", config={'displayModeBar': False})
         
         h_avg = hist_df['Display_Price'].mean()
         h_min = hist_df['Display_Price'].min()
