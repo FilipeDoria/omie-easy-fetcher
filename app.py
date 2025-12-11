@@ -23,6 +23,7 @@ def get_param(key, default_val, type_func):
 default_lang_idx = get_param("lang_idx", 2, int)
 default_vat = get_param("vat", 23.0, float)
 default_comm_fee = get_param("comm_fee", 0.025, float)
+default_losses = get_param("losses", 16.74, float) # New Default: 16.74%
 default_grid_type = get_param("grid_type", "Fixed", str)
 default_grid_fixed = get_param("grid_fixed", 0.060, float)
 default_grid_p1 = get_param("grid_p1", 0.100, float)
@@ -48,6 +49,8 @@ LANGUAGES = {
         "vat": "VAT / IVA (%)",
         "comm_fee_label": "Commercial Margin (€/kWh)",
         "comm_help": "Fee charged by your retailer to manage the contract. Usually 0.01 - 0.03 €.",
+        "losses_label": "Losses / Deviation (%)",
+        "losses_help": "Network losses or adjustment factor (e.g., 16.74%). Increases the base market price.",
         "grid_fee_label": "Grid Access Fees",
         "grid_help": "Cost to maintain cables and transport energy. Can be fixed or variable.",
         "grid_type_fixed": "Fixed",
@@ -77,7 +80,6 @@ LANGUAGES = {
         "interval_col": "Time Interval",
         "price_col": "Price",
         "base_col": "Base Market Price",
-        "date_axis": "Date",
         "now_label": "NOW",
         "verdict_good": "✅ Great time to use energy!",
         "verdict_bad": "❌ Expensive! Wait if possible.",
@@ -92,8 +94,9 @@ LANGUAGES = {
         "hist_title": "Price Evolution (Last 30 Days)",
         "hist_avg_note": "Showing daily average prices.",
         "explain_title": "📝 Price Breakdown",
-        "explain_formula": "Calculation Formula",
+        "explain_formula": "Price = ((Market × (1 + Losses)) + Fees) × Taxes",
         "explain_market": "Market Price",
+        "explain_losses": "Losses",
         "explain_comm": "Comm. Margin",
         "explain_grid": "Grid Fees",
         "explain_tax": "VAT"
@@ -113,6 +116,8 @@ LANGUAGES = {
         "vat": "IVA (%)",
         "comm_fee_label": "Margen Comercial (€/kWh)",
         "comm_help": "Coste de gestión de la comercializadora. Suele ser 0.01 - 0.03 €.",
+        "losses_label": "Perdas / Desvíos (%)",
+        "losses_help": "Pérdidas de red o factor de ajuste (ej. 16.74%). Incrementa el precio base del mercado.",
         "grid_fee_label": "Peajes de Acceso",
         "grid_help": "Coste de redes y transporte. Puede ser fijo o variable.",
         "grid_type_fixed": "Fijo",
@@ -157,8 +162,9 @@ LANGUAGES = {
         "hist_title": "Evolución de Precios (Últimos 30 Días)",
         "hist_avg_note": "Mostrando precios medios diarios.",
         "explain_title": "📝 Desglose del Precio",
-        "explain_formula": "Fórmula de Cálculo",
+        "explain_formula": "Precio = ((Mercado × (1 + Pérdidas)) + Peajes) × Impuestos",
         "explain_market": "Precio Mercado",
+        "explain_losses": "Pérdidas",
         "explain_comm": "Margen Comer.",
         "explain_grid": "Peajes",
         "explain_tax": "IVA"
@@ -178,6 +184,8 @@ LANGUAGES = {
         "vat": "IVA (%)",
         "comm_fee_label": "Margem Comercial (€/kWh)",
         "comm_help": "Custo de gestão do comercializador. Geralmente 0.01 - 0.03 €.",
+        "losses_label": "Perdas / Desvio (%)",
+        "losses_help": "Perdas da rede ou fator de desvio (ex: 16.74%). Aumenta o preço base do mercado.",
         "grid_fee_label": "Tarifas de Acesso às Redes",
         "grid_help": "Custo de transporte e manutenção da rede. Pode ser fixo ou variável.",
         "grid_type_fixed": "Fixo",
@@ -222,8 +230,9 @@ LANGUAGES = {
         "hist_title": "Evolução de Preços (Últimos 30 Dias)",
         "hist_avg_note": "Mostrando preços médios diários.",
         "explain_title": "📝 Composição do Preço",
-        "explain_formula": "Fórmula de Cálculo",
+        "explain_formula": "Preço = ((Mercado × (1 + Perdas)) + Taxas) × Impostos",
         "explain_market": "Preço Mercado",
+        "explain_losses": "Perdas/Desvio",
         "explain_comm": "Margem Comer.",
         "explain_grid": "Tarifas Rede",
         "explain_tax": "IVA"
@@ -315,7 +324,6 @@ def get_historical_prices(end_date, country_code, days=30):
 st.title("⚡ Iberian Electricity Prices")
 
 # --- CONSOLIDATED CONFIGURATION (Top Expander) ---
-# We initialize translation based on default first, then update after selection
 lang_options = ["English", "Español", "Português"]
 safe_idx = default_lang_idx if 0 <= default_lang_idx < 3 else 2
 
@@ -333,11 +341,11 @@ with st.expander(t_pre["config_title"], expanded=False):
         st.query_params["lang_idx"] = lang_options.index(lang_choice)
         
         show_raw = st.toggle(t["show_raw"], value=False, help=t["raw_info"])
-        # Calculator Toggle
         show_calculator = st.toggle(t["calc_title"], value=True)
 
     fixed_price_final = 0.0
     access_fee = 0.0
+    losses_val = 0.0
     
     # Logic: If Raw is OFF, show Tariff & Tax settings
     if not show_raw:
@@ -349,9 +357,14 @@ with st.expander(t_pre["config_title"], expanded=False):
             if show_fixed:
                 fixed_val_input = st.number_input(t["fixed_input"], value=default_fixed_val, step=0.001, format="%.3f")
                 st.query_params["fixed_val"] = fixed_val_input
-                
+            
+            # Commercial & Losses
             comm_input = st.number_input(t["comm_fee_label"], value=default_comm_fee, step=0.001, format="%.3f", help=t["comm_help"])
             st.query_params["comm_fee"] = comm_input
+            
+            losses_input = st.number_input(t["losses_label"], value=default_losses, step=0.01, format="%.2f", help=t["losses_help"])
+            st.query_params["losses"] = losses_input
+            losses_val = losses_input / 100
 
         with col_set3:
             st.markdown(f"##### 🏛️ {t['taxes']}")
@@ -395,7 +408,7 @@ if now_cet.hour > 13 or (now_cet.hour == 13 and now_cet.minute >= 30):
 else:
     max_allowed = now_cet.date()
 
-# --- MAIN CONTROLS (Date & Country) ---
+# --- MAIN CONTROLS ---
 col1, col2 = st.columns(2)
 with col1:
     day_select = st.date_input(t["select_date"], date.today(), max_value=max_allowed)
@@ -419,7 +432,7 @@ with tab1:
             title_label = "MWh"
         else:
             unit_label = "€/kWh"
-            fmt_str = "{:.2f} €" 
+            fmt_str = "{:.3f} €" 
             title_label = "PVPC"
             chart_colors = "RdYlGn_r"
             
@@ -431,7 +444,12 @@ with tab1:
                 return grid_fee_p3
 
             df['Grid_Fee_Applied'] = df.apply(apply_grid_fee, axis=1)
-            df['Display_Price'] = ((df['Raw_Price_MWh'] / 1000) + comm_input + df['Grid_Fee_Applied']) * (1 + tax_value)
+            # Core Formula with Losses: (Market * (1+Losses) + Comm + Grid) * Tax
+            df['Display_Price'] = (
+                ((df['Raw_Price_MWh'] / 1000) * (1 + losses_val)) 
+                + comm_input 
+                + df['Grid_Fee_Applied']
+            ) * (1 + tax_value)
 
         # --- LIVE STATUS ---
         if day_select == date.today():
@@ -473,19 +491,20 @@ with tab1:
         m2.metric(t["min_price"], fmt_str.format(min_price), f"at {best_h_range}", delta_color="inverse")
         m3.metric(t["max_price"], fmt_str.format(max_price), delta_color="normal")
 
-        # --- FORMULA EXPLAINER ---
+        # --- FORMULA EXPLAINER (Updated with Losses) ---
         if not show_raw:
             with st.expander(t["explain_title"]):
-                st.latex(r"\text{" + t["price_axis"] + r"} = (\text{" + t["explain_market"] + r"} + \text{" + t["explain_comm"] + r"} + \text{" + t["explain_grid"] + r"}) \times (1 + \text{" + t["explain_tax"] + r"})")
+                st.latex(r"\text{" + t["price_axis"] + r"} = ((\text{" + t["explain_market"] + r"} \times (1 + \text{" + t["explain_losses"] + r"\%})) + \text{" + t["explain_comm"] + r"} + \text{" + t["explain_grid"] + r"}) \times (1 + \text{" + t["explain_tax"] + r"})")
                 
                 avg_mkt = df['Raw_Price_MWh'].mean() / 1000
                 avg_grid = df['Grid_Fee_Applied'].mean()
                 
-                c_ex1, c_ex2, c_ex3, c_ex4 = st.columns(4)
+                c_ex1, c_ex2, c_ex3, c_ex4, c_ex5 = st.columns(5)
                 c_ex1.metric(t["explain_market"], f"{avg_mkt:.3f} €")
-                c_ex2.metric(f"+ {t['explain_comm']}", f"{comm_input:.3f} €")
-                c_ex3.metric(f"+ {t['explain_grid']} (Avg)", f"{avg_grid:.3f} €")
-                c_ex4.metric(f"x {t['explain_tax']}", f"{int(tax_value*100)}%")
+                c_ex2.metric(f"+ {t['explain_losses']}", f"{losses_input}%")
+                c_ex3.metric(f"+ {t['explain_comm']}", f"{comm_input:.3f} €")
+                c_ex4.metric(f"+ {t['explain_grid']} (Avg)", f"{avg_grid:.3f} €")
+                c_ex5.metric(f"x {t['explain_tax']}", f"{int(tax_value*100)}%")
                 
                 st.info(f"**Total Avg:** {avg_price:.3f} €/kWh")
 
@@ -503,7 +522,6 @@ with tab1:
             custom_data=['Hour_Range', 'Raw_Price_MWh']
         )
         
-        # Tooltips - UPDATED to remove deprecation warning
         if show_raw:
              fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Price: <b>%{y:.2f} €/MWh</b><extra></extra>")
         else:
@@ -563,7 +581,7 @@ with tab1:
             view_df.columns = [t['interval_col'], f"{t['price_col']} ({unit_label})"]
             if not show_raw:
                 view_df[f"{t['base_col']} (€/MWh)"] = df['Raw_Price_MWh']
-            st.dataframe(view_df.style.format(precision=2), width=None, use_container_width=True, hide_index=True)
+            st.dataframe(view_df.style.format(precision=3), width=None, use_container_width=True, hide_index=True)
     else:
         st.error(f"{t['data_unavailable']} {day_select}.")
 
@@ -577,16 +595,20 @@ with tab2:
             fmt_hist = "{:.2f} €"
         else:
             h_unit = "€/kWh"
-            fmt_hist = "{:.2f} €"
+            fmt_hist = "{:.3f} €"
             if st.query_params.get("grid_type") == "Fixed": proxy_grid = default_grid_fixed
             else: proxy_grid = default_grid_p2 
-            hist_df['Display_Price'] = ((hist_df['Raw_Price_MWh'] / 1000) + comm_input + proxy_grid) * (1 + tax_value)
+            # Updated History Calc with Losses
+            hist_df['Display_Price'] = (
+                ((hist_df['Raw_Price_MWh'] / 1000) * (1 + losses_val)) 
+                + comm_input + proxy_grid
+            ) * (1 + tax_value)
 
         st.markdown(f"### {t['hist_title']}")
         st.caption(t['hist_avg_note'])
         
         fig_h = px.line(hist_df, x="Date", y="Display_Price", markers=True, title=f"Average {h_unit}", labels={"Display_Price": t['price_axis'], "Date": t['date_axis']})
-        fig_h.update_traces(hovertemplate="<b>%{x}</b><br>Price: <b>%{y:.2f} " + h_unit + "</b><extra></extra>")
+        fig_h.update_traces(hovertemplate="<b>%{x}</b><br>Price: <b>%{y:.3f} " + h_unit + "</b><extra></extra>")
         fig_h.update_layout(xaxis=dict(fixedrange=True), yaxis=dict(fixedrange=True), hovermode="x unified")
         st.plotly_chart(fig_h, width=None, use_container_width=True, config={'displayModeBar': False})
         
