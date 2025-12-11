@@ -23,7 +23,7 @@ def get_param(key, default_val, type_func):
 default_lang_idx = get_param("lang_idx", 2, int)
 default_vat = get_param("vat", 23.0, float)
 default_comm_fee = get_param("comm_fee", 0.025, float)
-default_losses = get_param("losses", 16.74, float) # New Default: 16.74%
+default_losses = get_param("losses", 16.74, float)
 default_grid_type = get_param("grid_type", "Fixed", str)
 default_grid_fixed = get_param("grid_fixed", 0.060, float)
 default_grid_p1 = get_param("grid_p1", 0.100, float)
@@ -36,7 +36,7 @@ default_fixed_val = get_param("fixed_val", 0.120, float)
 LANGUAGES = {
     "English": {
         "title": "⚡ Iberian Electricity Prices",
-        "config_title": "⚙️ Configuration & Tariff",
+        "config_title": "⚙️ **CONFIGURE TARIFF** (Click to Open)",
         "tab_daily": "📅 Daily View",
         "tab_history": "📈 30-Day Trend",
         "select_date": "Select Date",
@@ -103,7 +103,7 @@ LANGUAGES = {
     },
     "Español": {
         "title": "⚡ Precio de la Luz (OMIE)",
-        "config_title": "⚙️ Configuración y Tarifa",
+        "config_title": "⚙️ **CONFIGURAR TARIFA** (Clic para Abrir)",
         "tab_daily": "📅 Vista Diaria",
         "tab_history": "📈 Tendencia 30 Días",
         "select_date": "Seleccionar Fecha",
@@ -116,7 +116,7 @@ LANGUAGES = {
         "vat": "IVA (%)",
         "comm_fee_label": "Margen Comercial (€/kWh)",
         "comm_help": "Coste de gestión de la comercializadora. Suele ser 0.01 - 0.03 €.",
-        "losses_label": "Perdas / Desvíos (%)",
+        "losses_label": "Pérdidas / Desvíos (%)",
         "losses_help": "Pérdidas de red o factor de ajuste (ej. 16.74%). Incrementa el precio base del mercado.",
         "grid_fee_label": "Peajes de Acceso",
         "grid_help": "Coste de redes y transporte. Puede ser fijo o variable.",
@@ -141,7 +141,6 @@ LANGUAGES = {
         "min_price": "Mínimo",
         "max_price": "Máximo",
         "your_rate": "Tu Tarifa Fija",
-        "tax_applied": "Impuesto Aplicado",
         "price_axis": "Precio",
         "hour_axis": "Hora Inicio",
         "interval_col": "Intervalo Horario",
@@ -171,7 +170,7 @@ LANGUAGES = {
     },
     "Português": {
         "title": "⚡ Preço da Eletricidade (OMIE)",
-        "config_title": "⚙️ Configuração e Tarifa",
+        "config_title": "⚙️ **CONFIGURAR TARIFA** (Clique para Abrir)",
         "tab_daily": "📅 Visão Diária",
         "tab_history": "📈 Tendência 30 Dias",
         "select_date": "Selecionar Data",
@@ -209,7 +208,6 @@ LANGUAGES = {
         "min_price": "Mínimo",
         "max_price": "Máximo",
         "your_rate": "Sua Taxa Fixa",
-        "tax_applied": "Imposto Aplicado",
         "price_axis": "Preço",
         "hour_axis": "Hora Início",
         "interval_col": "Intervalo Horário",
@@ -341,6 +339,7 @@ with st.expander(t_pre["config_title"], expanded=False):
         st.query_params["lang_idx"] = lang_options.index(lang_choice)
         
         show_raw = st.toggle(t["show_raw"], value=False, help=t["raw_info"])
+        # Calculator Toggle in Config
         show_calculator = st.toggle(t["calc_title"], value=True)
 
     fixed_price_final = 0.0
@@ -444,7 +443,7 @@ with tab1:
                 return grid_fee_p3
 
             df['Grid_Fee_Applied'] = df.apply(apply_grid_fee, axis=1)
-            # Core Formula with Losses: (Market * (1+Losses) + Comm + Grid) * Tax
+            # Core Formula with Losses
             df['Display_Price'] = (
                 ((df['Raw_Price_MWh'] / 1000) * (1 + losses_val)) 
                 + comm_input 
@@ -491,10 +490,12 @@ with tab1:
         m2.metric(t["min_price"], fmt_str.format(min_price), f"at {best_h_range}", delta_color="inverse")
         m3.metric(t["max_price"], fmt_str.format(max_price), delta_color="normal")
 
-        # --- FORMULA EXPLAINER (Updated with Losses) ---
+        # --- FORMULA EXPLAINER (Mobile Friendly) ---
         if not show_raw:
             with st.expander(t["explain_title"]):
-                st.latex(r"\text{" + t["price_axis"] + r"} = ((\text{" + t["explain_market"] + r"} \times (1 + \text{" + t["explain_losses"] + r"\%})) + \text{" + t["explain_comm"] + r"} + \text{" + t["explain_grid"] + r"}) \times (1 + \text{" + t["explain_tax"] + r"})")
+                # Split formula for mobile readability
+                st.latex(r"P_{total} = (P_{base} + \text{" + t["explain_grid"] + r"}) \times (1 + \text{" + t["explain_tax"] + r"})")
+                st.latex(r"P_{base} = (\text{" + t["explain_market"] + r"} \times (1 + \text{" + t["explain_losses"] + r"\%})) + \text{" + t["explain_comm"] + r"}")
                 
                 avg_mkt = df['Raw_Price_MWh'].mean() / 1000
                 avg_grid = df['Grid_Fee_Applied'].mean()
@@ -522,10 +523,11 @@ with tab1:
             custom_data=['Hour_Range', 'Raw_Price_MWh']
         )
         
+        # FIXED TOOLTIPS (No redundancy)
         if show_raw:
              fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Price: <b>%{y:.2f} €/MWh</b><extra></extra>")
         else:
-             fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Final: <b>%{y:.2f} €/kWh</b><br>Market Base: %{customdata[1]:.2f} €/MWh<extra></extra>")
+             fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Final: <b>%{y:.3f} €/kWh</b><br>Market Base: %{customdata[1]:.2f} €/MWh<extra></extra>")
 
         if not show_raw and show_fixed:
             fig.add_hline(y=fixed_price_final, line_dash="dash", line_color="#2E86C1", line_width=3, annotation_text=f"{t['your_rate']} ({fixed_price_final:.2f})")
@@ -598,7 +600,8 @@ with tab2:
             fmt_hist = "{:.3f} €"
             if st.query_params.get("grid_type") == "Fixed": proxy_grid = default_grid_fixed
             else: proxy_grid = default_grid_p2 
-            # Updated History Calc with Losses
+            
+            # History with Losses
             hist_df['Display_Price'] = (
                 ((hist_df['Raw_Price_MWh'] / 1000) * (1 + losses_val)) 
                 + comm_input + proxy_grid
@@ -608,7 +611,8 @@ with tab2:
         st.caption(t['hist_avg_note'])
         
         fig_h = px.line(hist_df, x="Date", y="Display_Price", markers=True, title=f"Average {h_unit}", labels={"Display_Price": t['price_axis'], "Date": t['date_axis']})
-        fig_h.update_traces(hovertemplate="<b>%{x}</b><br>Price: <b>%{y:.3f} " + h_unit + "</b><extra></extra>")
+        # FIXED TOOLTIP for History (No redundant date)
+        fig_h.update_traces(hovertemplate="Price: <b>%{y:.3f} " + h_unit + "</b><extra></extra>")
         fig_h.update_layout(xaxis=dict(fixedrange=True), yaxis=dict(fixedrange=True), hovermode="x unified")
         st.plotly_chart(fig_h, width=None, use_container_width=True, config={'displayModeBar': False})
         
