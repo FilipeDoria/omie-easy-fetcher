@@ -40,15 +40,14 @@ LANGUAGES = {
         "tab_history": "📈 30-Day Trend",
         "select_date": "Select Date",
         "country": "Country",
+        "settings": "⚙️ Settings",
         "show_raw": "Show Raw Market Price (€/MWh)",
         "comp_toggle": "Compare with Fixed Rate",
         "fixed_input": "Your Fixed Energy Price (€/kWh)",
-        "taxes": "Advanced Settings (Sidebar)",
+        "taxes": "Taxes & Fees",
         "vat": "VAT / IVA (%)",
         "comm_fee_label": "Commercial Margin (€/kWh)",
-        "comm_help": "Fee charged by your retailer to manage the contract. Usually 0.01 - 0.03 €.",
         "grid_fee_label": "Grid Access Fees",
-        "grid_help": "Cost to maintain cables and transport energy. Can be fixed or variable.",
         "grid_type_fixed": "Fixed",
         "grid_type_var": "Variable (Time-of-Use)",
         "grid_fixed_input": "Fixed Grid Fee (€/kWh)",
@@ -63,16 +62,19 @@ LANGUAGES = {
         "calc_cost": "Estimated Cost",
         "calc_start": "Best Start:",
         "view_table": "View Detailed Data Table",
+        "download_csv": "📥 Download Data as CSV",
         "daily_summary": "Daily Summary",
         "avg_price": "Average Price",
         "min_price": "Lowest Price",
         "max_price": "Highest Price",
         "your_rate": "Your Fixed Rate",
+        "tax_applied": "Tax Applied",
         "price_axis": "Price",
         "hour_axis": "Start Hour",
         "interval_col": "Time Interval",
         "price_col": "Price",
         "base_col": "Base Market Price",
+        "date_axis": "Date",
         "now_label": "NOW",
         "verdict_good": "✅ Great time to use energy!",
         "verdict_bad": "❌ Expensive! Wait if possible.",
@@ -83,8 +85,11 @@ LANGUAGES = {
         "zone_llano": "Standard",
         "zone_punta": "Peak",
         "data_unavailable": "⚠️ Data not available for",
+        "raw_info": "Showing raw market data in €/MWh. Taxes and tariffs are hidden.",
         "hist_title": "Price Evolution (Last 30 Days)",
         "hist_avg_note": "Showing daily average prices.",
+        "comm_help": "Fee charged by your retailer to manage the contract. Usually 0.01 - 0.03 €.",
+        "grid_help": "Cost to maintain cables and transport energy. Can be fixed or variable.",
         "explain_title": "📝 How is this calculated?",
         "explain_formula": "Price = (Market + Fees) × Taxes",
         "explain_detail": "Your final price is the raw energy cost plus commercial margins and grid tolls, multiplied by VAT."
@@ -96,15 +101,14 @@ LANGUAGES = {
         "tab_history": "📈 Tendencia 30 Días",
         "select_date": "Seleccionar Fecha",
         "country": "País",
+        "settings": "⚙️ Configuración",
         "show_raw": "Ver Precio Mercado (€/MWh)",
         "comp_toggle": "Comparar con Tarifa Fija",
         "fixed_input": "Precio Energía Fijo (€/kWh)",
-        "taxes": "Ajustes Avanzados (Barra Lateral)",
+        "taxes": "Impuestos y Peajes",
         "vat": "IVA (%)",
         "comm_fee_label": "Margen Comercial (€/kWh)",
-        "comm_help": "Coste de gestión de la comercializadora. Suele ser 0.01 - 0.03 €.",
         "grid_fee_label": "Peajes de Acceso",
-        "grid_help": "Coste de redes y transporte. Puede ser fijo o variable.",
         "grid_type_fixed": "Fijo",
         "grid_type_var": "Variable (Horario)",
         "grid_fixed_input": "Peaje Fijo (€/kWh)",
@@ -119,16 +123,19 @@ LANGUAGES = {
         "calc_cost": "Coste Estimado",
         "calc_start": "Mejor Hora:",
         "view_table": "Ver Tabla de Datos",
+        "download_csv": "📥 Descargar CSV",
         "daily_summary": "Resumen Diario",
         "avg_price": "Precio Medio",
         "min_price": "Mínimo",
         "max_price": "Máximo",
         "your_rate": "Tu Tarifa Fija",
+        "tax_applied": "Impuesto Aplicado",
         "price_axis": "Precio",
         "hour_axis": "Hora Inicio",
         "interval_col": "Intervalo Horario",
         "price_col": "Precio",
         "base_col": "Precio Base Mercado",
+        "date_axis": "Fecha",
         "now_label": "AHORA",
         "verdict_good": "✅ ¡Buen momento!",
         "verdict_bad": "❌ Caro. Espera si puedes.",
@@ -139,8 +146,11 @@ LANGUAGES = {
         "zone_llano": "Llano",
         "zone_punta": "Punta",
         "data_unavailable": "⚠️ Datos no disponibles para",
+        "raw_info": "Mostrando datos crudos en €/MWh. Sin impuestos ni peajes.",
         "hist_title": "Evolución de Precios (Últimos 30 Días)",
         "hist_avg_note": "Mostrando precios medios diarios.",
+        "comm_help": "Coste de gestión de la comercializadora. Suele ser 0.01 - 0.03 €.",
+        "grid_help": "Coste de redes y transporte. Puede ser fijo o variable.",
         "explain_title": "📝 ¿Cómo se calcula?",
         "explain_formula": "Precio = (Mercado + Peajes) × Impuestos",
         "explain_detail": "El precio final suma el coste de energía, margen comercial y peajes, multiplicado por el IVA."
@@ -152,15 +162,14 @@ LANGUAGES = {
         "tab_history": "📈 Tendência 30 Dias",
         "select_date": "Selecionar Data",
         "country": "País",
+        "settings": "⚙️ Configurações",
         "show_raw": "Ver Preço de Mercado (€/MWh)",
         "comp_toggle": "Comparar com Taxa Fixa",
         "fixed_input": "Seu Preço Fixo (€/kWh)",
-        "taxes": "Definições Avançadas (Barra Lateral)",
+        "taxes": "Impostos e Taxas",
         "vat": "IVA (%)",
         "comm_fee_label": "Margem Comercial (€/kWh)",
-        "comm_help": "Custo de gestão do comercializador. Geralmente 0.01 - 0.03 €.",
         "grid_fee_label": "Tarifas de Acesso às Redes",
-        "grid_help": "Custo de transporte e manutenção da rede. Pode ser fixo ou variável.",
         "grid_type_fixed": "Fixo",
         "grid_type_var": "Variável (Horário)",
         "grid_fixed_input": "Acesso Fixo (€/kWh)",
@@ -175,16 +184,19 @@ LANGUAGES = {
         "calc_cost": "Custo Estimado",
         "calc_start": "Melhor Início:",
         "view_table": "Ver Tabela de Dados",
+        "download_csv": "📥 Baixar CSV",
         "daily_summary": "Resumo Diário",
         "avg_price": "Preço Médio",
         "min_price": "Mínimo",
         "max_price": "Máximo",
         "your_rate": "Sua Taxa Fixa",
+        "tax_applied": "Imposto Aplicado",
         "price_axis": "Preço",
         "hour_axis": "Hora Início",
         "interval_col": "Intervalo Horário",
         "price_col": "Preço",
         "base_col": "Preço Base Mercado",
+        "date_axis": "Data",
         "now_label": "AGORA",
         "verdict_good": "✅ Bom momento!",
         "verdict_bad": "❌ Caro. Espere se puder.",
@@ -195,8 +207,11 @@ LANGUAGES = {
         "zone_llano": "Cheias",
         "zone_punta": "Ponta",
         "data_unavailable": "⚠️ Dados não disponíveis para",
+        "raw_info": "Mostrando dados brutos em €/MWh. Sem impostos ou taxas.",
         "hist_title": "Evolução de Preços (Últimos 30 Dias)",
         "hist_avg_note": "Mostrando preços médios diários.",
+        "comm_help": "Custo de gestão do comercializador. Geralmente 0.01 - 0.03 €.",
+        "grid_help": "Custo de transporte e manutenção da rede. Pode ser fixo ou variável.",
         "explain_title": "📝 Como é calculado?",
         "explain_formula": "Preço = (Mercado + Taxas) × Impostos",
         "explain_detail": "O preço final soma o custo da energia, a margem comercial e as tarifas de acesso, multiplicado pelo IVA."
@@ -461,12 +476,12 @@ with tab1:
             custom_data=['Hour_Range', 'Raw_Price_MWh']
         )
         
-        # FIXED TOOLTIP: Remove explicit X-axis label repetition since unified mode handles it
+        # FIXED TOOLTIP: Remove implicit X-axis header to stop duplication
         if show_raw:
-             fig.update_traces(hovertemplate="Price: <b>%{y:.2f} €/MWh</b><extra></extra>")
+             # <extra></extra> removes the secondary box (trace info)
+             fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Price: <b>%{y:.2f} €/MWh</b><extra></extra>")
         else:
-             # Shows: Final Price + Base Market Price
-             fig.update_traces(hovertemplate="Final: <b>%{y:.2f} €/kWh</b><br>Market Base: %{customdata[1]:.2f} €/MWh<extra></extra>")
+             fig.update_traces(hovertemplate="<b>%{customdata[0]}</b><br>Final: <b>%{y:.2f} €/kWh</b><br>Market Base: %{customdata[1]:.2f} €/MWh<extra></extra>")
 
         if not show_raw and show_fixed:
             fig.add_hline(y=fixed_price_final, line_dash="dash", line_color="#2E86C1", line_width=3, annotation_text=f"{t['your_rate']} ({fixed_price_final:.2f})")
@@ -544,8 +559,8 @@ with tab2:
         st.caption(t['hist_avg_note'])
         
         fig_h = px.line(hist_df, x="Date", y="Display_Price", markers=True, title=f"Average {h_unit}", labels={"Display_Price": t['price_axis'], "Date": t['date_axis']})
-        # FIXED TOOLTIP: Remove explicit Date repetition
-        fig_h.update_traces(hovertemplate="Price: <b>%{y:.2f} " + h_unit + "</b><extra></extra>")
+        # FIXED TOOLTIP for History
+        fig_h.update_traces(hovertemplate="<b>%{x}</b><br>Price: <b>%{y:.2f} " + h_unit + "</b><extra></extra>")
         fig_h.update_layout(xaxis=dict(fixedrange=True), yaxis=dict(fixedrange=True), hovermode="x unified")
         st.plotly_chart(fig_h, use_container_width=True, config={'displayModeBar': False})
         
